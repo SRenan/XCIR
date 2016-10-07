@@ -7,3 +7,4 @@ Maintainer: Renan Sauteraud <rxs575@psu.edu>
 Description: Estimating inactivated X chromosome expression
 License: GPL-2
 LazyData: TRUE
+RoxygenNote: 5.0.1
