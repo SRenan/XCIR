@@ -4,7 +4,7 @@
 \alias{getXIexpr}
 \title{Estimate inactivated X chromosome expression}
 \usage{
-getXIexpr(dt, dt_frac, xciGenes, dp_max = 500)
+getXIexpr(dt, dt_frac, xciGenes, dp_max = 500, output = TRUE)
 }
 \arguments{
 \item{dt}{A \code{data.table}. The data. It must contain a gender column.}

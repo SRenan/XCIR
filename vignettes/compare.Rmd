@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "XCIR"
 output: html_document
 ---
 
@@ -9,15 +9,39 @@ library(knitr)
 opts_chunk$set(message = FALSE, warning = FALSE)
 ```
 
-This example vignette compares the pipeline with and without XCIR for 14 1000g 
-subjects.
-```{r}
+```{r data, echo = FALSE}
+library(DT)
 datafolder <- "~/workspace/XCI/data/comparaison/"
 vcf_file <- file.path(datafolder, "c-compareX.chrX.vcf")
-anno_file <- "~/workspace/XCI/test_siteRef.tsv.anno"
+anno_file <- "~/workspace/XCIR/chrX_siteRef.anno"
 ```
-```{r}
+
+## A small example
+This example vignette compares the pipeline with and without XCIR for 14 subjects
+of the 1000 genome project.
+
+### Reading data and annotations
+```{r readdata}
 library(XCIR)
-dt <- readXVcf(vcf_file)
-dt_anno <- addAnno(dt, anno_file)
+# vcf file contains data after pileup
+dt_1 <- readXVcf(vcf_file)
+print(dt_1)
+dt_anno <- addAnno(dt_1, anno_file)
+dt_genic <- getGenicDP(dt_anno, "~/workspace/XCI/data/intermediate/GEUVADIS.sex.csv")
 ```
+
+### Estimating cell fraction and XI expression
+```{r estimate}
+xg_file <- "~/workspace/XCI/data/startdata/xciGene.txt"
+dt_frac <- getCellFrac(dt_genic, xciGenes = xg_file)
+dt_xi <- getXIexpr(dt_genic, dt_frac, xciGenes = xg_file, dp_max = 500, output = FALSE)
+```
+
+### Estimated expression
+```{r end}
+dt_xi <- dt_xi[normExp != ""]
+dt_xi <- dt_xi[, `:=`(c("CHROM", "gender", "frac_mean"), list(NULL, NULL))]
+display_dt <- datatable(dt_xi, rownames = FALSE)
+formatRound(display_dt, c("frac", "frac_XIST", "frac_median", "pI", "sd_pI", "pval_pI", "t", "normExp"), digits = 3)
+```
+

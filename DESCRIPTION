@@ -1,7 +1,7 @@
 Package: XCIR
 Type: Package
 Title: Estimating inactivated X chromosome expression
-Version: 0.1.3
+Version: 0.1.4
 Author: Renan Sauteraud, Dajiang Liu
 Maintainer: Renan Sauteraud <rxs575@psu.edu>
 Description: Estimating inactivated X chromosome expression
