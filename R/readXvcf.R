@@ -23,7 +23,8 @@ makeDTFromGeno <- function(geno){
 #'
 #' @param vcf_file A \code{character}. The path to a vcf file.
 #' @return A \code{data.table} object in long format of length sample*site.
-#' @importFrom VariantAnnotation ScanVcfParam readVcf geno
+#' @importFrom VariantAnnotation ScanVcfParam readVcf geno alt
+#' @importFrom IRanges CharacterList
 #' @export
 readXVcf <- function(vcf_file){
   vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("GT", "AD"))

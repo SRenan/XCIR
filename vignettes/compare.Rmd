@@ -1,0 +1,23 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+
+```{r knitr, echo = FALSE}
+library(knitr)
+opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+This example vignette compares the pipeline with and without XCIR for 14 1000g 
+subjects.
+```{r}
+datafolder <- "~/workspace/XCI/data/comparaison/"
+vcf_file <- file.path(datafolder, "c-compareX.chrX.vcf")
+anno_file <- "~/workspace/XCI/test_siteRef.tsv.anno"
+```
+```{r}
+library(XCIR)
+dt <- readXVcf(vcf_file)
+dt_anno <- addAnno(dt, anno_file)
+```

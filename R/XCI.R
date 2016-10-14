@@ -35,12 +35,31 @@ getCellFrac <- function(dt, xciGenes){
 #Output:
 # For each cutoff: The pI, pval, sd, quantile
 
+#' Estimate inactivated X chromosome expression
+#'
+#' Calculate inactivated X chromosome expression for a given list of genes.
+#'
+#' @details
+#' Select the females. calculate the proportion of expression coming from the
+#' inactivated X chromosome for each gene.
+#'
+#' When the allelic coverage is very big for some genes, it gives more power,
+#' which allow to spot smaller significant differences. When only major
+#' differences are of interest, the \code{dp_max} parameter can be set to a
+#' lower value.
+#'
+#' @param dt A \code{data.table}. The data. It must contain a gender column.
+#' @param dt_frac A \code{data.table}. The result of the \code{getCellFrac}
+#' function.
+#' @param dp_max A \code{numeric}. If any gene has a total coverage above this
+#' number, the coverage will be set to this number.
+#'
 #' @export
 getXIexpr <- function(dt, dt_frac, xciGenes, dp_max = 500){
   xci <- readLines(xciGenes)
   dt[, frac := AD_ref/tot]
   dt <- dt[GENE %in% xci]
-  dt <- dt[gender == "female"]
+  dt <- dt[tolower(gender) == "female"]
   dt[tot > dp_max, AD_ref := frac*dp_max]
   dt[tot > dp_max, tot := dp_max]
   dt <- merge(dt, dt_frac, by = "subject")
@@ -55,4 +74,10 @@ getXIexpr <- function(dt, dt_frac, xciGenes, dp_max = 500){
     dt[, normExp := qnorm(pval_pI, lower.tail = FALSE)]
     write.table(dt[!is.na(normExp) & !is.nan(frac_XIST)], file=paste0("XIexpr_", dp_cutoff)) # Write the output for the cutoff
   }
+}
+
+#' @export
+write_siteRef <- function(dt, ref_file = "test_ref.anno.tsv"){
+  write.table(dt[, list(CHROM, POS, REF, ALT)], file = ref_file,
+              row.names = FALSE, quote = FALSE, sep = "\t")
 }
