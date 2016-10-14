@@ -1,3 +1,14 @@
+#' @export
+getGenicDP <- function(dt_anno, gender_file){
+  sex <- fread(gender_file)
+  setnames(sex, c("subject", "gender"))
+  sex[, gender := tolower(gender)]
+  dt_anno <- merge(dt_anno, sex, by = "subject")
+  tot <- dt_anno[, lapply(.SD, sum, na.rm = TRUE), by = c("CHROM", "gender", "GENE", "subject"), .SDcols = c("AD_ref", "AD_alt")] #nrow = nGenes * nSubs
+  tot[, tot := AD_ref + AD_alt]
+  return(tot)
+}
+
 # Input:
 # The output of the estimated genic DP
 # A list of genes that are known to NOT escape XCI (or a file).
@@ -55,16 +66,21 @@ getCellFrac <- function(dt, xciGenes){
 #' number, the coverage will be set to this number.
 #'
 #' @export
-getXIexpr <- function(dt, dt_frac, xciGenes, dp_max = 500){
+getXIexpr <- function(dt, dt_frac, xciGenes, dp_max = 500, output = TRUE){
   xci <- readLines(xciGenes)
   dt[, frac := AD_ref/tot]
   dt <- dt[GENE %in% xci]
   dt <- dt[tolower(gender) == "female"]
   dt[tot > dp_max, AD_ref := frac*dp_max]
   dt[tot > dp_max, tot := dp_max]
-  dt <- merge(dt, dt_frac, by = "subject")
-  for(dp_cutoff in seq(50, 10, -10)){
+  full_dt <- merge(dt, dt_frac, by = "subject")
+  cutoffs <- seq(50, 10, -10)
+  l <- vector("list", length(cutoffs))
+  i <- 1
+  for(dp_cutoff in cutoffs){
     # Anything that depends on the coverage is affected by the cutoff
+    dt <- copy(full_dt)
+    dt[, cutoff := dp_cutoff]
     dt[AD_ref < dp_cutoff, AD_ref := NA]
     dt[tot < dp_cutoff, tot := NA]
     dt[, pI := (AD_ref/tot + frac_mean - 1)/(2*frac_mean-1), by = c("GENE", "subject")]
@@ -72,8 +88,12 @@ getXIexpr <- function(dt, dt_frac, xciGenes, dp_max = 500){
     dt[, pval_pI := pnorm(pI/sd_pI, mean = 0, lower.tail = FALSE), by = c("GENE", "subject")]
     dt[, t := pI/sd_pI]
     dt[, normExp := qnorm(pval_pI, lower.tail = FALSE)]
-    write.table(dt[!is.na(normExp) & !is.nan(frac_XIST)], file=paste0("XIexpr_", dp_cutoff)) # Write the output for the cutoff
+    if(output)
+      write.table(dt[!is.na(normExp) & !is.nan(frac_XIST)], file=paste0("XIexpr_", dp_cutoff)) # Write the output for the cutoff
+    l[[i]] <- dt
+    i <- i+1
   }
+  return(rbindlist(l))
 }
 
 #' @export

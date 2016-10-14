@@ -23,8 +23,9 @@ makeDTFromGeno <- function(geno){
 #'
 #' @param vcf_file A \code{character}. The path to a vcf file.
 #' @return A \code{data.table} object in long format of length sample*site.
-#' @importFrom VariantAnnotation ScanVcfParam readVcf geno alt
+#' @importFrom VariantAnnotation ScanVcfParam readVcf geno alt ref
 #' @importFrom IRanges CharacterList
+#' @importFrom Biostrings unstrsplit
 #' @export
 readXVcf <- function(vcf_file){
   vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("GT", "AD"))
@@ -85,6 +86,6 @@ addAnno <- function(dt, anno_file){
   anno[, CHROM := as.character(CHROM)]
   anno[, POS := as.numeric(POS)]
   anno[, ANNO_FULL := NULL]
-  DPR.anno <- merge(anno, dt,  by = c("CHROM", "POS", "REF", "ALT"))
+  DPR.anno <- merge(unique(anno), dt,  by = c("CHROM", "POS", "REF", "ALT"))
   return(DPR.anno)
 }
