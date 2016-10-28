@@ -4,10 +4,16 @@
 \alias{readXVcf}
 \title{Read a vcf file to extract information relevant to XCI}
 \usage{
-readXVcf(vcf_file)
+readXVcf(vcf_file, haps_file = NULL, rm_homo = TRUE)
 }
 \arguments{
 \item{vcf_file}{A \code{character}. The path to a vcf file.}
+
+\item{haps_file}{A \code{character}. The path to a .haps file, the output of
+the shapeit software.}
+
+\item{rm_homo}{A \code{logical}. If set to TRUE, homozygous sites will be
+removed from the output. Otherwise, they will be set to NA.}
 }
 \value{
 A \code{data.table} object in long format of length sample*site.
@@ -15,5 +21,10 @@ A \code{data.table} object in long format of length sample*site.
 \description{
 Read a given vcf file and extract minimum information required for the
 estimation of the expression of inactivated X chromosome.
+}
+\references{
+O. Delaneau, B. Howie, A. Cox, J-F. Zagury, J. Marchini (2013) Haplotype
+estimation using sequence reads. American Journal of Human Genetics 93 (4)
+ 787-696.
 }
 
