@@ -4,3 +4,5 @@
 .Ruserdata
 *.Rproj
 .Rproj.*
+*.fa
+*.fa.fai

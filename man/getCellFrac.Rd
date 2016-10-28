@@ -4,7 +4,8 @@
 \alias{getCellFrac}
 \title{Get fraction of cell expressing the inactivated allele}
 \usage{
-getCellFrac(dt, xciGenes)
+getCellFrac(dt, xciGenes = system.file("extdata", "xciGenes.txt", package =
+  "XCIR"))
 }
 \arguments{
 \item{dt}{A \code{data.table}. The data.}
@@ -13,9 +14,15 @@ getCellFrac(dt, xciGenes)
 }
 \value{
 A \code{data.table} containing the average, and median fraction of
-expression of the inactivated chromosome for each subject.
+expression of the inactivated chromosome for each sample. frac_XIST is the
+fraction of total XIST expression contributed by the inactive X chromosome.
 }
 \description{
 Get fraction of cell expressing the inactivated allele
+}
+\details{
+The default xciGenes is a list of 177 genes known to be affected by X
+chromosome inactivation from Cotton et al. 2013
+(dx.doi.org/10.1186/gb-2013-14-11-r122).
 }
 

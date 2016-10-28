@@ -4,10 +4,13 @@
 \alias{addAnno}
 \title{Read annotation file}
 \usage{
-addAnno(dt, anno_file)
+addAnno(dt, seqm_annotate = TRUE, anno_file = NULL)
 }
 \arguments{
 \item{dt}{A \code{data.table} object.}
+
+\item{seqm_annotate}{A \code{logical}. If set to TRUE, the \code{seqminer}
+package will be used to annotate \code{dt}}
 
 \item{anno_file}{A \code{character}. The name of a file containing annotations.}
 }
