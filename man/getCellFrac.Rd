@@ -4,11 +4,13 @@
 \alias{getCellFrac}
 \title{Get fraction of cell expressing the inactivated allele}
 \usage{
-getCellFrac(dt, xciGenes = system.file("extdata", "xciGenes.txt", package =
-  "XCIR"))
+getCellFrac(dt, fix_phasing = FALSE, xciGenes = NULL)
 }
 \arguments{
-\item{dt}{A \code{data.table}. The data.}
+\item{dt}{A \code{data.table}. The output of \code{getGenicDP}.}
+
+\item{fix_phasing}{A \code{logical}. If set to TRUE, the fraction above .5
+are set to 1-frac.}
 
 \item{xciGenes}{A \code{character}. The name of the genes to analyze.}
 }
@@ -24,5 +26,8 @@ Get fraction of cell expressing the inactivated allele
 The default xciGenes is a list of 177 genes known to be affected by X
 chromosome inactivation from Cotton et al. 2013
 (dx.doi.org/10.1186/gb-2013-14-11-r122).
+}
+\seealso{
+getGenicDP
 }
 

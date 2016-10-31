@@ -4,7 +4,7 @@
 \alias{getXIexpr}
 \title{Estimate inactivated X chromosome expression}
 \usage{
-getXIexpr(dt, dt_frac, xciGenes, dp_max = 500, output = TRUE)
+getXIexpr(dt, dt_frac, dp_max = 500, output = FALSE)
 }
 \arguments{
 \item{dt}{A \code{data.table}. The data. It must contain a gender column.}
@@ -14,9 +14,12 @@ function.}
 
 \item{dp_max}{A \code{numeric}. If any gene has a total coverage above this
 number, the coverage will be set to this number.}
+
+\item{output}{A \code{logical}. If set to TRUE, output a table for each
+cutoff level.}
 }
 \description{
-Calculate inactivated X chromosome expression for a given list of genes.
+Calculate inactivated X chromosome expression.
 }
 \details{
 Select the females. calculate the proportion of expression coming from the
