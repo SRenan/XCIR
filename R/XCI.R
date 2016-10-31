@@ -13,8 +13,9 @@ getGenicDP <- function(dt_anno, plot = FALSE, gender_file = NULL){
     stop("If there is no gender column in the input, a gender_file mapping
          sample to gender should be provided")
   }
-  tot <- dt_anno[, lapply(.SD, sum, na.rm = TRUE), by = c("CHROM", "gender", "GENE", "sample"), .SDcols = c("AD_ref", "AD_alt")] #nrow = nGenes * nSubs
-  tot[, tot := AD_ref + AD_alt]
+  dt_anno[, n_snps := .N, by = c("CHROM", "sample", "GENE")]
+  tot <- dt_anno[, lapply(.SD, sum, na.rm = TRUE), by = c("CHROM", "gender", "GENE", "sample", "n_snps"), .SDcols = c("AD_hap1", "AD_hap2")] #nrow = nGenes * nSubs
+  tot[, tot := AD_hap1 + AD_hap2]
   if(plot){
     ggplot(tot[, mean(tot), by = "GENE"], aes(V1)) + geom_histogram() + xlab(label = "coverage") + ylab("gene count")
   }
@@ -25,7 +26,8 @@ getGenicDP <- function(dt_anno, plot = FALSE, gender_file = NULL){
 #'
 #' @param dt A \code{data.table}. The output of \code{getGenicDP}.
 #' @param xciGenes A \code{character}. The name of the genes to analyze.
-#'
+#' @param fix_phasing A \code{logical}. If set to TRUE, the fraction above .5
+#'  are set to 1-frac.
 #'
 #' @details
 #' The default xciGenes is a list of 177 genes known to be affected by X
@@ -38,13 +40,16 @@ getGenicDP <- function(dt_anno, plot = FALSE, gender_file = NULL){
 #' @seealso getGenicDP
 #'
 #' @export
-getCellFrac <- function(dt, xciGenes = NULL){
+getCellFrac <- function(dt, fix_phasing = FALSE, xciGenes = NULL){
   if(is.null(xciGenes))
     xciGenes <- system.file("extdata", "xciGene.txt", package = "XCIR")
   xci <- readLines(xciGenes)
   dt <- dt[GENE %in% c(xci, "XIST"),]
-  dt <- dt[, frac := AD_ref/tot]
-  dt <- dt[frac > .5, frac := 1-frac] #Set fraction that are above .5 to 1-frac
+  dt <- dt[, frac := AD_hap1/tot]
+  if(fix_phasing){
+    # If an XCI gene is mostly expressed by the Xi, the phasing is likely wrong
+    dt <- dt[frac > .5, frac := 1-frac] #Set fraction that are above .5 to 1-frac
+  }
   dt <- dt[tot < 10, tot := NA]
   dt <- dt[, frac_mean := mean(frac, na.rm = TRUE), by = "sample"]
   dt <- dt[, frac_median := median(frac, na.rm = TRUE), by = "sample"]
@@ -63,7 +68,7 @@ getCellFrac <- function(dt, xciGenes = NULL){
 
 #' Estimate inactivated X chromosome expression
 #'
-#' Calculate inactivated X chromosome expression for a given list of genes.
+#' Calculate inactivated X chromosome expression.
 #'
 #' @details
 #' Select the females. calculate the proportion of expression coming from the
@@ -83,14 +88,14 @@ getCellFrac <- function(dt, xciGenes = NULL){
 #'  cutoff level.
 #'
 #' @export
-getXIexpr <- function(dt, dt_frac, xciGenes = NULL, dp_max = 500, output = FALSE){
-  if(is.null(xciGenes))
-    xciGenes <- system.file("extdata", "xciGene.txt", package = "XCIR")
-  xci <- readLines(xciGenes)
-  dt[, frac := AD_ref/tot]
-  dt <- dt[GENE %in% xci]
+getXIexpr <- function(dt, dt_frac, dp_max = 500, output = FALSE){
+  #if(is.null(xciGenes))
+  #  xciGenes <- system.file("extdata", "xciGene.txt", package = "XCIR")
+  #xci <- readLines(xciGenes)
+  #dt <- dt[GENE %in% xci]
+  dt[, frac := AD_hap1/tot]
   dt <- dt[tolower(gender) == "female"]
-  dt[tot > dp_max, AD_ref := frac*dp_max]
+  dt[tot > dp_max, AD_hap1 := frac*dp_max]
   dt[tot > dp_max, tot := dp_max]
   full_dt <- merge(dt, dt_frac, by = "sample")
   cutoffs <- seq(50, 10, -10)
@@ -101,10 +106,16 @@ getXIexpr <- function(dt, dt_frac, xciGenes = NULL, dp_max = 500, output = FALSE
     # Anything that depends on the coverage is affected by the cutoff
     dt <- copy(full_dt)
     dt[, cutoff := dp_cutoff]
-    dt[AD_ref < dp_cutoff, AD_ref := NA]
+    dt[AD_hap1 < dp_cutoff, AD_hap1 := NA]
     dt[tot < dp_cutoff, tot := NA]
-    dt[, pI := (AD_ref/tot + frac_mean - 1)/(2*frac_mean-1), by = c("GENE", "sample")]
-    dt[, sd_pI := sqrt((AD_ref/tot)*(1-AD_ref/tot)/(tot))/abs(2*frac_mean-1), by = c("GENE", "sample")]
+
+    dt[, tau := (frac-frac_mean)/(1-frac_mean-frac)]
+    dt[, var_tau := (2*frac_mean-1)^2/(frac+frac_mean-1)^4*(1-frac_mean)*frac_mean/tot]
+    dt[, sd_tau := sqrt(var_tau)]
+    dt[, p_value := pnorm(tau/sd_tau, lower.tail = FALSE)]
+
+    dt[, pI := (AD_hap1/tot + frac_mean - 1)/(2*frac_mean-1), by = c("GENE", "sample")]
+    dt[, sd_pI := sqrt((AD_hap1/tot)*(1-AD_hap1/tot)/(tot))/abs(2*frac_mean-1), by = c("GENE", "sample")]
     dt[, pval_pI := pnorm(pI/sd_pI, mean = 0, lower.tail = FALSE), by = c("GENE", "sample")]
     dt[, t := pI/sd_pI]
     dt[, normExp := qnorm(pval_pI, lower.tail = FALSE)]

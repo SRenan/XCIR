@@ -86,9 +86,9 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
   #  dt2[GT %in% c("0/0", "1/1"), AD := "NA,NA"]
   #}
   dt2[, `:=`(c("AD_ref", "AD_alt"), tstrsplit(AD, split = ","))]
-  #dt2[GT == "1/0",`:=`(c("AD_ref", "AD_alt"), list(AD_alt, AD_ref))]
-  #dt2[, AD_ref := as.numeric(AD_ref)] #will coerce "NA" into NA with a warning
-  #dt2[, AD_alt := as.numeric(AD_alt)]
+  #dt2[GT == "1/0",`:=`(c("AD_hap1", "AD_hap2"), list(AD_hap2, AD_hap1))]
+  #dt2[, AD_hap1 := as.numeric(AD_hap1)] #will coerce "NA" into NA with a warning
+  #dt2[, AD_hap2 := as.numeric(AD_hap2)]
 
   if(rm_homo){
     dt2 <- dt2[!(h1 == 0 & h2 == 0) & !(h1 == 1 & h2 == 1)]
@@ -97,11 +97,12 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
   }
   dt2[, AD_ref := as.numeric(AD_ref)]
   dt2[, AD_alt := as.numeric(AD_alt)]
-  # Si h1 == 1. L'allele sur chrA est a1. si a1 == ref. AD_chrA <- AD_ref
-  dt2[, a_chrA := ifelse(h1 == 0, a1, a2)]
-  dt2[, a_chrB := ifelse(h1 == 0, a2, a1)]
-  dt2[, AD_chrA := ifelse(a_chrA == REF, AD_ref, AD_alt)]
-  dt2[, AD_chrB := ifelse(a_chrB == REF, AD_ref, AD_alt)]
+  # Si h1 == 1. L'allele sur chrA est a1. si a1 == ref. AD_chrA <- AD_hap1
+  dt2[, a_hap1 := ifelse(h1 == 0, a1, a2)]
+  dt2[, a_hap2 := ifelse(h1 == 0, a2, a1)]
+  dt2[, AD_hap1 := ifelse(a_hap1 == REF, AD_ref, AD_alt)]
+  dt2[, AD_hap2 := ifelse(a_hap2 == REF, AD_ref, AD_alt)]
+  dt2 <- dt2[, list(CHROM, ID, POS, REF, ALT, sample, a1, a2, h1, h2, a_hap1, a_hap2, AD_hap1, AD_hap2)]
   return(dt2)
 }
 
@@ -158,9 +159,6 @@ addAnno <- function(dt, seqm_annotate = TRUE, anno_file = NULL){
   anno[, ANNO_FULL := NULL]
   anno <- anno[GENE != "Intergenic"]
   DPR.anno <- merge(unique(anno), dt,  by = c("CHROM", "POS", "REF", "ALT"))
-  if(seqm_annotate){
-    unlink(output_dir, recursive = TRUE)
-  }
   return(DPR.anno)
 }
 
