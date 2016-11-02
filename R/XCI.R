@@ -88,7 +88,7 @@ getCellFrac <- function(dt, fix_phasing = FALSE, xciGenes = NULL){
 #'  cutoff level.
 #'
 #' @export
-getXIexpr <- function(dt, dt_frac, dp_max = 500, output = FALSE){
+getXIexpr <- function(dt, dt_frac, dp_max = 500, fix_phasing = FALSE, output = FALSE){
   #if(is.null(xciGenes))
   #  xciGenes <- system.file("extdata", "xciGene.txt", package = "XCIR")
   #xci <- readLines(xciGenes)
@@ -98,6 +98,10 @@ getXIexpr <- function(dt, dt_frac, dp_max = 500, output = FALSE){
   dt[tot > dp_max, AD_hap1 := frac*dp_max]
   dt[tot > dp_max, tot := dp_max]
   full_dt <- merge(dt, dt_frac, by = "sample")
+  if(fix_phasing){
+    full_dt[frac > .5, frac := 1-frac]
+    full_dt[frac_mean > .5, frac_mean := 1-frac_mean]
+  }
   cutoffs <- seq(50, 10, -10)
   l <- vector("list", length(cutoffs))
   i <- 1
@@ -106,8 +110,7 @@ getXIexpr <- function(dt, dt_frac, dp_max = 500, output = FALSE){
     # Anything that depends on the coverage is affected by the cutoff
     dt <- copy(full_dt)
     dt[, cutoff := dp_cutoff]
-    dt[AD_hap1 < dp_cutoff, AD_hap1 := NA]
-    dt[tot < dp_cutoff, tot := NA]
+    dt[tot < dp_cutoff, `:=`(c("tot", "AD_hap1"), list(NA, NA))]
 
     dt[, tau := (frac-frac_mean)/(1-frac_mean-frac)]
     dt[, var_tau := (2*frac_mean-1)^2/(frac+frac_mean-1)^4*(1-frac_mean)*frac_mean/tot]
