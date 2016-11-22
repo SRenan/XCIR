@@ -4,13 +4,17 @@
 \alias{addAnno}
 \title{Read annotation file}
 \usage{
-addAnno(dt, seqm_annotate = TRUE, anno_file = NULL)
+addAnno(dt, seqm_annotate = TRUE, filter_mono_cutoff = 0,
+  anno_file = NULL)
 }
 \arguments{
 \item{dt}{A \code{data.table} object.}
 
 \item{seqm_annotate}{A \code{logical}. If set to TRUE, the \code{seqminer}
 package will be used to annotate \code{dt}}
+
+\item{filter_mono_cutoff}{A \code{numeric}. If > 0, remove mono-allelic
+SNPs. See details for more information.}
 
 \item{anno_file}{A \code{character}. The name of a file containing annotations.}
 }
@@ -21,5 +25,11 @@ and annotations at the covered SNPs.
 \description{
 Read a given annotation file and merge it with a data.table containing the
 relevant information to exstimate inactivated X chromosome expression.
+}
+\details{
+\code{filter_mono_cutoff} will remove SNPs that do not have at least one read
+covering each allele accross the pooled samples. i.e: If any sample has at
+least one read covering the first allele and any sample has at least one
+read covering the second allele, then the SNP will be preserved.
 }
 
