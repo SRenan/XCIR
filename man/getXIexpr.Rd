@@ -4,7 +4,8 @@
 \alias{getXIexpr}
 \title{Estimate inactivated X chromosome expression}
 \usage{
-getXIexpr(dt, dt_frac, dp_max = 500, output = FALSE)
+getXIexpr(dt, dt_frac, dp_max = NULL, fix_phasing = FALSE, output = FALSE,
+  cutoff = NA)
 }
 \arguments{
 \item{dt}{A \code{data.table}. The data. It must contain a gender column.}
@@ -17,6 +18,8 @@ number, the coverage will be set to this number.}
 
 \item{output}{A \code{logical}. If set to TRUE, output a table for each
 cutoff level.}
+
+\item{cutoffs}{A \code{numeric} or NA. The cutoffs a}
 }
 \description{
 Calculate inactivated X chromosome expression.

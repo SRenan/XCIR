@@ -4,7 +4,8 @@
 \alias{getCellFrac}
 \title{Get fraction of cell expressing the inactivated allele}
 \usage{
-getCellFrac(dt, fix_phasing = FALSE, xciGenes = NULL)
+getCellFrac(dt, readCountThresh = 10, fix_phasing = FALSE,
+  xciGenes = NULL, plot = FALSE)
 }
 \arguments{
 \item{dt}{A \code{data.table}. The output of \code{getGenicDP}.}
@@ -12,7 +13,11 @@ getCellFrac(dt, fix_phasing = FALSE, xciGenes = NULL)
 \item{fix_phasing}{A \code{logical}. If set to TRUE, the fraction above .5
 are set to 1-frac.}
 
-\item{xciGenes}{A \code{character}. The name of the genes to analyze.}
+\item{xciGenes}{A \code{character}. A list or a filename that contains a
+list of known XCI genes.}
+
+\item{plot}{A \code{logical}. If set to TRUE, a plot of the median fraction
+for each sample will be generated.}
 }
 \value{
 A \code{data.table} containing the average, and median fraction of

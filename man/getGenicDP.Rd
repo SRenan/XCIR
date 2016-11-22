@@ -6,6 +6,13 @@
 \usage{
 getGenicDP(dt_anno, plot = FALSE, gender_file = NULL)
 }
+\arguments{
+\item{plot}{A \code{logical}. If set to TRUE, a histogram of the gene
+coverage will be displayed.}
+
+\item{gender_file}{A \code{character}. An optional file that contains
+matching for sample to gender. Must have two columns.}
+}
 \description{
 Get sum of the coverage of all SNPs for each gene
 }
