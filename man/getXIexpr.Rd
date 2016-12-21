@@ -4,7 +4,7 @@
 \alias{getXIexpr}
 \title{Estimate inactivated X chromosome expression}
 \usage{
-getXIexpr(dt, dt_frac, dp_max = NULL, fix_phasing = FALSE, output = FALSE,
+getXIexpr(dt, dt_frac, dp_max = NULL, fix_phasing = TRUE, output = FALSE,
   cutoff = NA)
 }
 \arguments{
@@ -19,7 +19,7 @@ number, the coverage will be set to this number.}
 \item{output}{A \code{logical}. If set to TRUE, output a table for each
 cutoff level.}
 
-\item{cutoffs}{A \code{numeric} or NA. The cutoffs a}
+\item{cutoffs}{A \code{numeric} or NA.}
 }
 \description{
 Calculate inactivated X chromosome expression.

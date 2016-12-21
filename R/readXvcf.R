@@ -172,7 +172,8 @@ seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
 #' and annotations at the covered SNPs.
 #'
 #' @export
-addAnno <- function(dt, seqm_annotate = TRUE, filter_mono_cutoff = 0, anno_file = NULL){
+addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 10, filter_mono_cutoff = 0, anno_file = NULL){
+  dt <- dt[AD_hap1 + AD_hap2 > read_count_cutoff]
   if(seqm_annotate){
     output_dir <- tempdir()
     anno_file <- seqm_anno(input = copy(dt), output_dir)
@@ -190,7 +191,6 @@ addAnno <- function(dt, seqm_annotate = TRUE, filter_mono_cutoff = 0, anno_file 
   DPR_anno <- merge(unique(anno), dt,  by = c("CHROM", "POS", "REF", "ALT"))
   if(filter_mono_cutoff > 0){
     poskp <- DPR_anno[, list(sum(AD_hap1), sum(AD_hap2)), by = c("CHROM", "POS")][V1 >= filter_mono_cutoff & V2 >= filter_mono_cutoff][, POS]
-    #poskp <- unique(DPR_anno[, list(sum(AD_hap1), sum(AD_hap2)), by = c("CHROM", "POS", "sample")][V1 > filter_mono_cutoff & V2 > filter_mono_cutoff][, POS])
     DPR_anno <- DPR_anno[POS %in% poskp]
   }
   return(DPR_anno)
