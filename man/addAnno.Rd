@@ -4,8 +4,8 @@
 \alias{addAnno}
 \title{Read annotation file}
 \usage{
-addAnno(dt, seqm_annotate = TRUE, filter_mono_cutoff = 0,
-  anno_file = NULL)
+addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 10,
+  filter_mono_cutoff = 0, anno_file = NULL)
 }
 \arguments{
 \item{dt}{A \code{data.table} object.}

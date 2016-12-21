@@ -4,7 +4,8 @@
 \alias{getGenicDP}
 \title{Get sum of the coverage of all SNPs for each gene}
 \usage{
-getGenicDP(dt_anno, plot = FALSE, gender_file = NULL)
+getGenicDP(dt_anno, highest_expr = FALSE, plot = FALSE,
+  gender_file = NULL)
 }
 \arguments{
 \item{plot}{A \code{logical}. If set to TRUE, a histogram of the gene

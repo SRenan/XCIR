@@ -4,8 +4,9 @@
 \alias{getCellFrac}
 \title{Get fraction of cell expressing the inactivated allele}
 \usage{
-getCellFrac(dt, readCountThresh = 10, fix_phasing = FALSE,
-  xciGenes = NULL, plot = FALSE)
+getCellFrac(dt, readCountThresh = 10, fix_phasing = TRUE,
+  overall_mean = F, xist_only = F, merge_xist = TRUE, xciGenes = NULL,
+  plot = FALSE)
 }
 \arguments{
 \item{dt}{A \code{data.table}. The output of \code{getGenicDP}.}
