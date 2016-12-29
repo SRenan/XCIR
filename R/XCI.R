@@ -172,23 +172,5 @@ getXIexpr <- function(dt, dt_frac, dp_max = NULL, fix_phasing = TRUE, output = F
     dt[, total_cutoff := NULL][]
     if(output)
       write.table(dt[!is.na(normExp) & !is.nan(frac_XIST)], file=paste0("XIexpr_", cutoff)) # Write the output for the cutoff
-  #  l[[i]] <- dt
-  #  i <- i+1
-  #}
-  #return(rbindlist(l))
-return(dt)
+  return(dt)
 }
-
-
-
-#' Run the whole pipeline in one function
-XCIanalyze <- function(vcf_file, haps_file, fix_phasing = TRUE, add_gender = TRUE){
-  vcf <- readXVcf(vcf_file, haps_file)
-  anno <- addAnno(vcf)
-  if(add_gender) anno[, gender := "female"]
-  genic <- getGenicDP(anno)
-  frac <- getCellFrac(genic, fix_phasing = fix_phasing)
-  xi <- getXIexpr(genic, frac, fix_phasing = fix_phasing)
-  predictMap(xi, anno, rm50 = FALSE)
-  return(xi)
-} ## TODO: predictMap has hard-coded sample names;
