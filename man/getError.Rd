@@ -4,8 +4,8 @@
 \alias{getError}
 \title{Get proportion of errors}
 \usage{
-getError(xi, frac_type = NULL, alpha = 0.05, cutoff = 1, min_read = 0,
-  plot = TRUE)
+getError(xi, frac_type = NULL, alpha = 0.05, cutoff = 1, plot = TRUE,
+  xciGenes = NULL)
 }
 \arguments{
 \item{xi}{A \code{data.table}. The result of \code{getXIexpr}. The predicted
@@ -19,10 +19,10 @@ NULL defaults to "mean".}
 \item{cutoff}{A \code{numeric}. Escaped genes are genes for which the
 inactivated copy has more reads than this cutoff.}
 
+\item{plot}{A \code{logical}. Create a barplot of the Type 1 error and power.}
+
 \item{min_read}{A \code{numeric}. The minimum number of reads for a gene to
 be considered informative.}
-
-\item{plot}{A \code{logical}. Create a barplot of the Type 1 error and power.}
 }
 \description{
 Get the proportion of type 1 and type 2 error for each sample for selected

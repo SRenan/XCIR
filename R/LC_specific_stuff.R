@@ -1,40 +1,23 @@
-#' Get proportion of errors
-#'
-#' Get the proportion of type 1 and type 2 error for each sample for selected
-#' cell fraction type
-#'
-#' @param xi A \code{data.table}. The result of \code{getXIexpr}. The predicted
-#'  status for each gene and sample.
-#' @param frac_type A \code{character}, can be NULL, "mean", "median" or "XIST"
-#'  NULL defaults to "mean".
-#' @param alpha A \code{numeric}. The significance threshold.
-#' @param cutoff A \code{numeric}. Escaped genes are genes for which the
-#'  inactivated copy has more reads than this cutoff.
-#' @param min_read A \code{numeric}. The minimum number of reads for a gene to
-#'  be considered informative.
-#' @param plot A \code{logical}. Create a barplot of the Type 1 error and power.
-#'
-#' @importFrom ggplot2 geom_bar
-#' @export
-getError <- function(xi, frac_type = NULL, alpha = .05, cutoff = 1, plot = TRUE, xciGenes = NULL){
+getError <- function(xi, frac_type = NULL, alpha = .05, escape_cutoff = 1, inac_cutoff = 2, plot = TRUE, xciGenes = NULL){
   # Take the two most skewed samples as the truth
   samples <- as.character(unique(xi$sample))
   truth <- unique(xi[, list(sample, frac_median)])[order(frac_median), sample][1:2]
   others <- samples[!samples %in% truth]
 
-  xi <- copy(xi)
-  xi <- xi[tot > min_read]
 
+  xi <- copy(xi)
   xci_genes <- XCIR:::readXCI()
 
   if(cutoff < 1){
     escaped_genes <- xi[sample %in% truth, min(AD_hap1, AD_hap2)/tot, by = "GENE,sample"][V1 > cutoff, .N, by = "GENE"][N ==2, GENE]
     inactivated_genes <- unique(xi[!GENE %in% escaped_genes, GENE])
   } else{
-    escaped_genes <- xi[sample %in% truth & AD_hap1 > cutoff & AD_hap2 > cutoff, .N, by = GENE][N==2, GENE]
-    xci <- xi[GENE %in% xci_genes,]
-    inactivated_genes <- unique(xci[, GENE])
-    #inactivated_genes <- xci[(sample %in% truth) & ((AD_hap1 <= cutoff & AD_hap2 > cutoff) | (AD_hap1 > cutoff & AD_hap2 <= cutoff))
+    escaped_genes <- xi[sample %in% truth & AD_hap1 > escape_cutoff & AD_hap2 > escape_cutoff, .N, by = GENE][N==2, GENE]
+    dt_xci <- xi[GENE %in% xci_genes]
+    notinactivated <- unique(c(dt_xci[grep("LC2$", sample)][AD_hap1 > inac_cutoff & AD_hap2 > inac_cutoff, GENE],
+                               dt_xci[grep("LC3$", sample)][AD_hap1 > inac_cutoff & AD_hap2 > inac_cutoff, GENE]))
+    inactivated_genes <- unique(dt_xci[!GENE %in% notinactivated, GENE])
+    #inactivated_genes <- xi[(sample %in% truth) & ((AD_hap1 <= cutoff & AD_hap2 > cutoff) | (AD_hap1 > cutoff & AD_hap2 <= cutoff))
     #                        , .N, by = GENE][N==2, GENE]
   }
 
@@ -66,7 +49,7 @@ getError <- function(xi, frac_type = NULL, alpha = .05, cutoff = 1, plot = TRUE,
   err1 <- merge(nt1, n_info, by = "sample")
   err1[, value := N.x/N.y]
   err1[, type := "typeI"]
-  nt2 <- err_table[GENE %in% escaped_genes & sample %in% others & p_value > alpha][, .N, by = sample] #number of genes with type2 error
+  nt2 <- err_table[GENE %in% escaped_genes & sample %in% others & p_value > alpha][, .N, by = sample] #number of genes with type1 error
   if(!all(others %in% nt2[["sample"]])){
     ot <- others[!others %in% nt2$sample]
     nt2 <- rbind(nt2, data.table(sample = ot, N = rep(0, length(ot))))[order(sample)]
@@ -84,7 +67,7 @@ getError <- function(xi, frac_type = NULL, alpha = .05, cutoff = 1, plot = TRUE,
     p <- ggplot(err, aes(x = sample, y = value, fill = type)) + geom_bar(position = "dodge", stat = "identity")
     p <- p + geom_text(aes(x = sample, y = value, label = paste0(N.x, "/", N.y)), position = position_dodge(0.9), vjust = -.25)
     p <- p + geom_text(aes(x = 1.5, y = 1, label = paste0(length(escaped_genes), " escaped genes"))) +
-     geom_text(aes(x = 1.5, y = .95, label = paste0(length(inactivated_genes), " inactivated genes")))
+      geom_text(aes(x = 1.5, y = .95, label = paste0(length(inactivated_genes), " inactivated genes")))
     print(p)
   }
 

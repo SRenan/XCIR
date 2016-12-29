@@ -1,8 +1,12 @@
 readXCI <- function(xciGenes = NULL){
   if(!is.null(xciGenes)){
     if(length(xciGenes) > 1){
+      # If the input is a character vector, assume it's gene symbols
       xci <- xciGenes
       return(xciGenes)
+    } else if(xciGenes == "cotton"){
+      xci <- system.file("extdata", "xciGene_cotton.txt", package = "XCIR")
+      xci <- readLines(xci)
     } else if(file.exists(xciGenes)){
       xci <- readLines(xciGenes)
     }
