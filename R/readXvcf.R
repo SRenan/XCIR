@@ -1,4 +1,4 @@
-makeDTFromGeno <- function(geno){
+  makeDTFromGeno <- function(geno){
   # Fix samplenames, find CHROM and POS from rownames.
   sampleNames <-  gsub("\\..*", "", basename(colnames(geno)))
   rn <- rownames(geno)
@@ -84,7 +84,7 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
       dtGT[, `:=`(c("h1", "h2"), tstrsplit(GT, split = "\\|"))]
       dtGT[, a_hap1 := ifelse(h1 == 0, REF, ALT)]
       dtGT[, a_hap2 := ifelse(h2 == 0, REF, ALT)]
-    } else if(ext == "haps"){
+    } else if(ext %in% c("haps", "")){ #make it work with empty for shiny
       setnames(dtGT, c("CHROM", "ID", "POS", "a1", "a2", "h1", "h2"))
       dtGT[, CHROM := as.character(CHROM)]
       dtGT[, a_hap1 := ifelse(h1 == 0, a1, a2)]
