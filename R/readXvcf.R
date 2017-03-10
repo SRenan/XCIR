@@ -158,6 +158,8 @@ seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
 #' @param dt A \code{data.table} object.
 #' @param seqm_annotate A \code{logical}. If set to TRUE, the \code{seqminer}
 #' package will be used to annotate \code{dt}
+#' @param read_count_cutoff A \code{numeric}. Keep only SNPs that have at least
+#'  that many reads.
 #' @param filter_mono_cutoff A \code{numeric}. If > 0, remove mono-allelic
 #'  SNPs. See details for more information.
 #' @param anno_file A \code{character}. The name of a file containing annotations.
@@ -172,7 +174,7 @@ seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
 #' and annotations at the covered SNPs.
 #'
 #' @export
-addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 10, filter_mono_cutoff = 0, anno_file = NULL){
+addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 10, filter_mono_cutoff = 3, anno_file = NULL){
   dt <- dt[AD_hap1 + AD_hap2 > read_count_cutoff]
   if(seqm_annotate){
     output_dir <- tempdir()

@@ -5,13 +5,16 @@
 \title{Read annotation file}
 \usage{
 addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 10,
-  filter_mono_cutoff = 0, anno_file = NULL)
+  filter_mono_cutoff = 3, anno_file = NULL)
 }
 \arguments{
 \item{dt}{A \code{data.table} object.}
 
 \item{seqm_annotate}{A \code{logical}. If set to TRUE, the \code{seqminer}
 package will be used to annotate \code{dt}}
+
+\item{read_count_cutoff}{A \code{numeric}. Keep only SNPs that have at least
+that many reads.}
 
 \item{filter_mono_cutoff}{A \code{numeric}. If > 0, remove mono-allelic
 SNPs. See details for more information.}
