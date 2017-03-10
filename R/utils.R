@@ -1,3 +1,4 @@
+# Read a list of known inactivated genes
 readXCI <- function(xciGenes = NULL){
   if(!is.null(xciGenes)){
     if(length(xciGenes) > 1){
@@ -5,10 +6,16 @@ readXCI <- function(xciGenes = NULL){
       xci <- xciGenes
       return(xciGenes)
     } else if(xciGenes == "cotton"){
-      xci <- system.file("extdata", "xciGene_cotton.txt", package = "XCIR")
+      xci <- system.file("extdata", "xciGenes_cotton.txt", package = "XCIR")
       xci <- readLines(xci)
+    } else if(xciGenes == "intersect"){
+      xci177 <- readLines(system.file("extdata", "xciGene.txt", package = "XCIR"))
+      xcic <- readLines(system.file("extdata", "xciGenes_cotton.txt", package = "XCIR"))
+      xci <- intersect(xci177, xcic)
     } else if(file.exists(xciGenes)){
       xci <- readLines(xciGenes)
+    } else{
+      stop("The file does not exist")
     }
   } else{
     xci <- system.file("extdata", "xciGene.txt", package = "XCIR")
@@ -16,52 +23,44 @@ readXCI <- function(xciGenes = NULL){
   }
 }
 
-# Combine snps from pileup and array into a new vcf for phasing
-#
-# array should be GM07345.vcf
-# pileup should be the result of ->
-#array <- "~/workspace/XCI/snp1Kgp/GM07345.vcf" #6470 heterozyguous sites
-#pileup <- "~/workspace/XCI/umap/het.site.RNAseq.txt" #401 new SNPs
-#pileup <- "~/workspace/XCI/umap/het.site.RNAseq0.txt" #993 new SNPs
-
-
-# This takes the output of a pileup and subset to get only the heterozyguous sites
-getRNAhet <- function(pileup_vcf, thresh = 0, out = NULL){
-  if(is.null(out))
-    stop("out should be a character")
-  system(paste("vcftools --vcf", pileup_vcf, "--get-INFO AD")) #Get allelic depth
-  system(paste0("grep \",\" out.INFO | sed s/\",\"/\"\t\"/g | awk '{if(NF==6 && length($3)==1 && length($4)==1 && $5>", thresh, " && $6>", thresh, ") print $0}' > ", out)) #keep only heterozyguous SNPs that have at least thresh reads on each allele
-  message(paste("The file", out, " can be used as input of combineVCF along with genotyped SNPs"))
-  return(NULL)
+# Find the most skewed samples within an XCIR data.table
+getSkewedSamples <- function(data, n = 2){
+  nsamples <- length(unique(data$sample))
+  if(n < 1 | n > nsamples)
+    stop(paste("n should be a number between 1 and", nsamples))
+  skewed_samples <- as.character(data[, median(pmin(AD_hap1, AD_hap2)/(AD_hap1+AD_hap2)), by = sample][order(V1)][1:n, sample])
+  return(skewed_samples)
 }
 
-#
-combineVCF <- function(pileup, array, out){
-  vcf_dt <- fread(array, skip = 29)
-  sn <- colnames(vcf_dt)[ncol(vcf_dt)]
-  setnames(vcf_dt, c("#CHROM", sn), c("CHROM", "sample"))
-  vcf_dt <- vcf_dt[CHROM == 23]
-  vcf_dt[, CHROM := as.character(CHROM)]
-  vcf_dt[, CHROM := "X"]
-  vcf_dt <- vcf_dt[! sample %in% c("1/1", "0/0", "./.")]
 
-  rna_dt <- fread(pileup) #This is already the subset of heterozyguous SNPs w/ at least 2 SNPs on each allele
-  setnames(rna_dt, c("CHROM", "POS", "REF", "ALT", "AD1", "AD2"))
-  rna_dt[, ID := "."]
-  rna_dt[, QUAL := "."]
-  rna_dt[, FILTER := "."]
-  rna_dt[, INFO := "."]
-  rna_dt[, FORMAT := "GT"]
-  rna_dt[, sample := "0/1"]
+# Remove genes that are not inactivated in the 2 most skewed samples
+rmInac <- function(dt_xci, rm_inac){
+  if(!is.numeric(rm_inac)){
+    stop("rm_inac should be null or numeric")
+  }
+  xci_dt <- copy(dt_xci)
+  skewed <- getSkewedSamples(xci_dt)
+  notinactivated <- unique(c(xci_dt[grep(skewed[1], sample)][AD_hap1 > rm_inac & AD_hap2 > rm_inac, GENE],
+                             xci_dt[grep(skewed[2], sample)][AD_hap1 > rm_inac & AD_hap2 > rm_inac, GENE]))
+  xci_dt <- xci_dt[!GENE %in% notinactivated]
+  print(paste("Using", length(unique(xci_dt[, GENE])), "inactivated genes to calculate cell fraction."))
+  return(xci_dt)
+}
 
-  new_vcf <- merge(vcf_dt, rna_dt, all = TRUE)
-  new_vcf <- new_vcf[!(POS %in% new_vcf[duplicated(new_vcf$POS)]$POS & is.na(AD1))]
-  new_vcf[, `:=`(c("AD1", "AD2"), list(NULL, NULL))]
-  setnames(new_vcf, "CHROM", "#CHROM")
-
-  msg <- paste0(nrow(new_vcf), " rows. ", length(which(rna_dt$POS %in% vcf_dt$POS)), "rows existed in both datasets. Kept the ones from RNA-Seq")
-  message(msg)
-  write.table(new_vcf, file = out,
-              row.names = FALSE, quote = FALSE, sep = "\t")
-  return(new_vcf)
+# Find the allelic imbalance for each sample
+# Based on formula in Cotton et al. Genome Biology 2013
+getAI <- function(calls, labels = FALSE){
+  ai_dt <- unique(calls[, list(sample, GENE, POS, AD_hap1, AD_hap2, tot, f)])
+  ai_dt <- unique(ai_dt[, list(sum(pmin(AD_hap1, AD_hap2)), sum(tot), f), by = sample]) # Assume that lowest expressed allele is Xi
+  ai_dt[, pxa := (V2-V1)/V2]
+  ai_dt[, pxi := V1/V2]
+  ai_dt[, num := (pxa * (1-f)) + (pxi * f)]
+  ai_dt[, denom := f * (pxi + pxa) + (1-f) * (pxi + pxa)]
+  ai_dt[, ai := abs(num/denom -0.5)]
+  p <- ggplot(ai_dt[!is.na(f)], aes(ai, pxi)) + geom_point() + geom_smooth(method="loess") +
+    ggtitle("%Xi expression vs. AI") + theme(plot.title = element_text(hjust = .5))
+  if(labels)
+    p <- p + geom_text(aes(label = sample), vjust = 1.2)
+  print(p)
+  return(ai_dt)
 }

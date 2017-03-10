@@ -1,41 +1,3 @@
-#' Get sum of the coverage of all SNPs for each gene
-#'
-#' @param plot A \code{logical}. If set to TRUE, a histogram of the gene
-#'  coverage will be displayed.
-#' @param gender_file A \code{character}. An optional file that contains
-#'  matching for sample to gender. Must have two columns.
-#'
-#' @importFrom ggplot2 ggplot geom_histogram xlab ylab aes
-#' @export
-getGenicDP <- function(dt_anno, highest_expr = FALSE, plot = FALSE, gender_file = NULL){
-  if(!is.null(gender_file)){
-    sex <- fread(gender_file)
-    setnames(sex, c("sample", "gender"))
-    sex[, gender := tolower(gender)]
-    dt_anno <- merge(dt_anno, sex, by = "sample")
-  }
-  else if(!"gender" %in% names(dt_anno)){
-    stop("If there is no 'gender' column in the input, a gender_file mapping
-         sample to gender should be provided")
-  }
-  dt_anno <- dt_anno[gender == "female"]
-  dt_anno <- dt_anno[, n_snps := .N, by = c("CHROM", "sample", "GENE")]
-  if(highest_expr){ #Use only the most expressed SNP instead of the sum of all SNPs
-    summed <- dt_anno[, lapply(.SD, sum, na.rm = TRUE), by = c("CHROM", "POS", "GENE", "n_snps"), .SDcols = c("AD_hap1", "AD_hap2")]
-    summed <- summed[, tot := AD_hap1 + AD_hap2]
-    maxpos <- summed[summed[, .I[which.max(tot)], by = "GENE"]$V1]$POS
-    bygene <- dt_anno[POS %in% maxpos, list(CHROM, POS, REF, ALT, GENE, sample, gender, n_snps, AD_hap1, AD_hap2)] #nrow = nGenes * nSubs
-    bygene[, tot := AD_hap1 + AD_hap2]
-  } else{
-    bygene <- dt_anno[, lapply(.SD, sum, na.rm = TRUE), by = c("CHROM", "gender", "GENE", "sample", "n_snps"), .SDcols = c("AD_hap1", "AD_hap2")] #nrow = nGenes * nSubs
-    bygene[, tot := AD_hap1 + AD_hap2]
-  }
-  if(plot){
-    # Plot sum and color for sample
-  }
-  return(bygene)
-}
-
 #' Get fraction of cell expressing the inactivated allele
 #'
 #' @param dt A \code{data.table}. The output of \code{getGenicDP}.
@@ -157,6 +119,11 @@ getXIexpr <- function(dt, dt_frac, dp_max = NULL, fix_phasing = TRUE, output = F
     dt[, sd_tau := sqrt(var_tau)]
     dt[, p_value := pnorm(tau/sd_tau, lower.tail = FALSE)]
 
+    #dt[, frac := pmin(AD_hap1, AD_hap2)/(AD_hap1 + AD_hap2)]
+    dt[, tau_var := (frac_mean - frac)/(2*frac_mean - 1)]
+    dt[, sd_var := sqrt((frac_mean*(1-frac_mean))/tot + (frac*(1-frac))/tot)]
+    dt[, p_value_var := pnorm(tau_var/sd_var, lower.tail = FALSE)][]
+
     # frac_median
     dt[, tau_med := (frac-frac_median)/(1-frac_median-frac)]
     dt[, var_tau_med := (2*frac_median-1)^2/(frac+frac_median-1)^4*(1-frac_median)*frac_median/total_cutoff]
@@ -173,4 +140,46 @@ getXIexpr <- function(dt, dt_frac, dp_max = NULL, fix_phasing = TRUE, output = F
     if(output)
       write.table(dt[!is.na(normExp) & !is.nan(frac_XIST)], file=paste0("XIexpr_", cutoff)) # Write the output for the cutoff
   return(dt)
+}
+
+# uses the output of getCellFrac2
+#' @export
+getXIexpr3 <- function(cellfrac_dt){
+  xi <- copy(cellfrac_dt)
+
+  # Two sample
+  xi[, tau2 := (fg - f)]#/(2*f -1)]# close to 1 when samples are skewed
+  xi[, t2 := tau2/sqrt(var_f + var_fg)]
+  xi[, p_value2 := pnorm(t2, lower.tail = F)]
+
+  xi[, tau_xist2 := (fg - frac_XIST)]#/(2*f -1)]# close to 1 when samples are skewed
+  xi[, t_xist2 := tau_xist2/sqrt(var_frac_XIST + var_fg)]
+  xi[, p_value_xist2 := pnorm(t_xist2, lower.tail = F)]
+
+  # One sample
+  xi[, tau1 := (fg - f)]#/(2*f -1)]# close to 1 when samples are skewed
+  xi[, t1 := tau1/sqrt(var_fg)]
+  xi[, p_value1 := pnorm(t1, lower.tail = F)]
+
+  xi[, tau_xist1 := (fg - frac_XIST)]#/(2*f -1)]# close to 1 when samples are skewed
+  xi[, t_xist1 := tau_xist1/sqrt(var_fg)]
+  xi[, p_value_xist1 := pnorm(t_xist1, lower.tail = F)]
+
+  #mean
+  xi[, tau := (fg-f)/(1-f-fg)]
+  xi[, var_tau := (2*f-1)^2/(fg+f-1)^4*(1-f)*f/tot]
+  xi[, sd_tau := sqrt(var_tau)]
+  xi[, p_value := pnorm(tau/sd_tau, lower.tail = FALSE)]
+  # frac_median
+  xi[, tau_med := (fg-frac_median)/(1-frac_median-fg)]
+  xi[, var_tau_med := (2*frac_median-1)^2/(fg+frac_median-1)^4*(1-frac_median)*frac_median/tot]
+  xi[, sd_tau_med := sqrt(var_tau_med)]
+  xi[, p_value_med := pnorm(tau_med/sd_tau_med, lower.tail = FALSE)]
+  # frac_XIST
+  xi[, tau_xist := (fg-frac_XIST)/(1-frac_XIST-fg)]
+  xi[, var_tau_xist := (2*frac_XIST-1)^2/(fg+frac_XIST-1)^4*(1-frac_XIST)*frac_XIST/tot]
+  xi[, sd_tau_xist := sqrt(var_tau_xist)]
+  xi[, p_value_xist := pnorm(tau_xist/sd_tau_xist, lower.tail = FALSE)]
+
+  return(xi[])
 }

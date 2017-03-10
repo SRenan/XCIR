@@ -1,41 +1,32 @@
-#' Get proportion of errors
+#' Plot error and power
 #'
-#' Get the proportion of type 1 and type 2 error for each sample for selected
-#' cell fraction type
+#' Plot power and type 1 error for each sample. Using the most skewed samples
+#' as a reference. Used to asses the quality of the prediction.
 #'
-#' @param xi A \code{data.table}. The result of \code{getXIexpr}. The predicted
-#'  status for each gene and sample.
-#' @param frac_type A \code{character}, can be NULL, "mean", "median" or "XIST"
-#'  NULL defaults to "mean".
-#' @param alpha A \code{numeric}. The significance threshold.
-#' @param cutoff A \code{numeric}. Escaped genes are genes for which the
-#'  inactivated copy has more reads than this cutoff.
-#' @param min_read A \code{numeric}. The minimum number of reads for a gene to
-#'  be considered informative.
-#' @param plot A \code{logical}. Create a barplot of the Type 1 error and power.
+#' @note
+#' This will only work if all samples belong to the same subject.
 #'
-#' @importFrom ggplot2 geom_bar
 #' @export
-getError <- function(xi, frac_type = NULL, alpha = .05, cutoff = 1, plot = TRUE, xciGenes = NULL){
+getError <- function(xi, frac_type = NULL, alpha = .05, escape_cutoff = 1, inac_cutoff = 2, plot = TRUE, xciGenes = TRUE){
   # Take the two most skewed samples as the truth
   samples <- as.character(unique(xi$sample))
-  truth <- unique(xi[, list(sample, frac_median)])[order(frac_median), sample][1:2]
+  truth <- getSkewedSamples(xi)
   others <- samples[!samples %in% truth]
 
   xi <- copy(xi)
-  xi <- xi[tot > min_read]
 
-  xci_genes <- XCIR:::readXCI()
-
-  if(cutoff < 1){
-    escaped_genes <- xi[sample %in% truth, min(AD_hap1, AD_hap2)/tot, by = "GENE,sample"][V1 > cutoff, .N, by = "GENE"][N ==2, GENE]
-    inactivated_genes <- unique(xi[!GENE %in% escaped_genes, GENE])
+  escaped_genes <- xi[sample %in% truth & AD_hap1 > escape_cutoff & AD_hap2 > escape_cutoff, .N, by = GENE][N==2, GENE]
+  if(xciGenes){
+    xci_genes <- readXCI()
+    xci_genes[! xci_genes %in% gNrm] # Not needed with the mixture-model
+    dt_xci <- xi[GENE %in% xci_genes]
+    notinactivated <- unique(c(dt_xci[grep(truth[1], sample)][AD_hap1 > inac_cutoff & AD_hap2 > inac_cutoff, GENE],
+                               dt_xci[grep(truth[2], sample)][AD_hap1 > inac_cutoff & AD_hap2 > inac_cutoff, GENE]))
+    inactivated_genes <- unique(dt_xci[!GENE %in% notinactivated, GENE])
   } else{
-    escaped_genes <- xi[sample %in% truth & AD_hap1 > cutoff & AD_hap2 > cutoff, .N, by = GENE][N==2, GENE]
-    xci <- xi[GENE %in% xci_genes,]
-    inactivated_genes <- unique(xci[, GENE])
-    #inactivated_genes <- xci[(sample %in% truth) & ((AD_hap1 <= cutoff & AD_hap2 > cutoff) | (AD_hap1 > cutoff & AD_hap2 <= cutoff))
-    #                        , .N, by = GENE][N==2, GENE]
+    dt_xci <- copy(xi)
+    inactivated_genes <- jcss[statusJ == "S", GENE]
+    escaped_genes <- jcss[statusJ == "E", GENE]
   }
 
   print(paste(length(escaped_genes), "escaped genes accross the 2 most skewed samples"))
@@ -46,8 +37,16 @@ getError <- function(xi, frac_type = NULL, alpha = .05, cutoff = 1, plot = TRUE,
       err_table <- xi[, list(GENE, sample, tot, p_value_med)]
     } else if(tolower(frac_type) == "xist"){
       err_table <- xi[, list(GENE, sample, tot, p_value_xist)]
+    } else if(tolower(frac_type) == "xist1"){
+      err_table <- xi[, list(GENE, sample, tot, p_value_xist1)]
+    } else if(tolower(frac_type) == "xist2"){
+      err_table <- xi[, list(GENE, sample, tot, p_value_xist2)]
     } else if(tolower(frac_type) == "mean"){
       err_table <- xi[, list(GENE, sample, tot, p_value)]
+    } else if(tolower(frac_type) == "mean1"){
+      err_table <- xi[, list(GENE, sample, tot, p_value1)]
+    } else if(tolower(frac_type) == "mean2"){
+      err_table <- xi[, list(GENE, sample, tot, p_value2)]
     } else{
       stop("frac_type should be NULL or one of median, mean or XIST")
     }
@@ -66,7 +65,7 @@ getError <- function(xi, frac_type = NULL, alpha = .05, cutoff = 1, plot = TRUE,
   err1 <- merge(nt1, n_info, by = "sample")
   err1[, value := N.x/N.y]
   err1[, type := "typeI"]
-  nt2 <- err_table[GENE %in% escaped_genes & sample %in% others & p_value > alpha][, .N, by = sample] #number of genes with type2 error
+  nt2 <- err_table[GENE %in% escaped_genes & sample %in% others & p_value > alpha][, .N, by = sample] #number of genes with type1 error
   if(!all(others %in% nt2[["sample"]])){
     ot <- others[!others %in% nt2$sample]
     nt2 <- rbind(nt2, data.table(sample = ot, N = rep(0, length(ot))))[order(sample)]
@@ -80,15 +79,18 @@ getError <- function(xi, frac_type = NULL, alpha = .05, cutoff = 1, plot = TRUE,
   err <- rbind(err1, err2)
   err[, fraction := frac_type]
 
+  setnames(err, c("N.x", "N.y"), c("N", "N_info"))
   if(plot){
+    err[type == "typeI", ymin := value -1.96*sqrt((N/N_info)*(1-N/N_info)/N_info)]
+    err[type == "typeI", ymax := value +1.96*sqrt((N/N_info)*(1-N/N_info)/N_info)]
     p <- ggplot(err, aes(x = sample, y = value, fill = type)) + geom_bar(position = "dodge", stat = "identity")
-    p <- p + geom_text(aes(x = sample, y = value, label = paste0(N.x, "/", N.y)), position = position_dodge(0.9), vjust = -.25)
+    p <- p + geom_text(aes(x = sample, y = value, label = paste0(N, "/", N_info)), position = position_dodge(0.9), vjust = -.25)
     p <- p + geom_text(aes(x = 1.5, y = 1, label = paste0(length(escaped_genes), " escaped genes"))) +
-     geom_text(aes(x = 1.5, y = .95, label = paste0(length(inactivated_genes), " inactivated genes")))
+      geom_text(aes(x = 1.5, y = .95, label = paste0(length(inactivated_genes), " inactivated genes")))
+    p <- p + geom_errorbar(aes(ymax = ymax, ymin = ymin), position = position_dodge(.9), width = .25, na.rm = TRUE)
     print(p)
   }
 
-  setnames(err, c("N.x", "N.y"), c("N", "N_info"))
   err[, value := round(value, 3)][]
   return(err)
 }
