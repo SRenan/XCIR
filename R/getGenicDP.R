@@ -34,7 +34,7 @@ getGenicMostExp <- function(annotated, pool = FALSE){
     summed <- dt_anno[, lapply(.SD, sum, na.rm = TRUE), by = c("CHROM", "POS", "GENE", "n_snps"), .SDcols = c("AD_hap1", "AD_hap2")]
     summed <- summed[, tot := AD_hap1 + AD_hap2]
     maxpos <- summed[summed[, .I[which.max(tot)], by = "GENE"]$V1]$POS
-    bygene <- dt_anno[POS %in% maxpos, list(CHROM, POS, REF, ALT, GENE, sample, gender, n_snps, AD_hap1, AD_hap2)] #nrow = nGenes * nSubs
+    bygene <- dt_anno[POS %in% maxpos, list(CHROM, POS, REF, ALT, ANNO, GENE, sample, gender, n_snps, AD_hap1, AD_hap2)] #nrow = nGenes * nSubs
     bygene[, tot := AD_hap1 + AD_hap2]
   } else{
     high <- copy(dt_anno)

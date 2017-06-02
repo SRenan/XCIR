@@ -5,7 +5,7 @@
 \title{Plot the fraction of genes in each category}
 \usage{
 plot_status_fraction(xi, alpha = 0.05, inference = "asymptotic",
-  threshold = c(0.25, 0.75), min_support = 0)
+  threshold = c(0.25, 0.75), min_support = 0, plot = TRUE)
 }
 \arguments{
 \item{xi}{A \code{data.table}. The calls, output from \code{betaBinomXI}.}
@@ -30,4 +30,3 @@ An invisible \code{data.table} with one row for each gene.
 Barplot of the fraction of gene that are 'subject', 'variable' and 'escape'
 inactivation from the calls made in XCIR
 }
-

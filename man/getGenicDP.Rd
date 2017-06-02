@@ -15,4 +15,3 @@ each SNP. Only use this if the samples come from the same subject}
 \description{
 Get sum of the coverage of all SNPs for each gene
 }
-

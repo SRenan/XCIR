@@ -33,4 +33,3 @@ which allow to spot smaller significant differences. When only major
 differences are of interest, the \code{dp_max} parameter can be set to a
 lower value.
 }
-

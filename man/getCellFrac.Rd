@@ -36,4 +36,3 @@ chromosome inactivation from Cotton et al. 2013
 \seealso{
 getGenicDP
 }
-

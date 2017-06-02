@@ -15,4 +15,3 @@ Read SNPs from RNA-Seq that have not been phased.
 \details{
 For phased samples, us \code{readXVcf}.
 }
-

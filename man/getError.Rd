@@ -14,4 +14,3 @@ as a reference. Used to asses the quality of the prediction.
 \note{
 This will only work if all samples belong to the same subject.
 }
-

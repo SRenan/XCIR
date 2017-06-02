@@ -35,4 +35,3 @@ covering each allele accross the pooled samples. i.e: If any sample has at
 least one read covering the first allele and any sample has at least one
 read covering the second allele, then the SNP will be preserved.
 }
-
