@@ -13,4 +13,3 @@ getCellFrac2(dt, xciGenes = NULL, method = "naive", xist_only = TRUE,
 \description{
 No longer used
 }
-

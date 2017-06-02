@@ -6,6 +6,7 @@
 #' @note
 #' This will only work if all samples belong to the same subject.
 #'
+#' @importFrom ggplot2 position_dodge
 #' @export
 getError <- function(xi, frac_type = NULL, alpha = .05, escape_cutoff = 1, inac_cutoff = 2, plot = TRUE, xciGenes = TRUE){
   # Take the two most skewed samples as the truth
@@ -18,7 +19,7 @@ getError <- function(xi, frac_type = NULL, alpha = .05, escape_cutoff = 1, inac_
   escaped_genes <- xi[sample %in% truth & AD_hap1 > escape_cutoff & AD_hap2 > escape_cutoff, .N, by = GENE][N==2, GENE]
   if(xciGenes){
     xci_genes <- readXCI()
-    xci_genes[! xci_genes %in% gNrm] # Not needed with the mixture-model
+    #xci_genes[! xci_genes %in% gNrm] # Not needed with the mixture-model
     dt_xci <- xi[GENE %in% xci_genes]
     notinactivated <- unique(c(dt_xci[grep(truth[1], sample)][AD_hap1 > inac_cutoff & AD_hap2 > inac_cutoff, GENE],
                                dt_xci[grep(truth[2], sample)][AD_hap1 > inac_cutoff & AD_hap2 > inac_cutoff, GENE]))
@@ -43,10 +44,6 @@ getError <- function(xi, frac_type = NULL, alpha = .05, escape_cutoff = 1, inac_
       err_table <- xi[, list(GENE, sample, tot, p_value_xist2)]
     } else if(tolower(frac_type) == "mean"){
       err_table <- xi[, list(GENE, sample, tot, p_value)]
-    } else if(tolower(frac_type) == "mean1"){
-      err_table <- xi[, list(GENE, sample, tot, p_value1)]
-    } else if(tolower(frac_type) == "mean2"){
-      err_table <- xi[, list(GENE, sample, tot, p_value2)]
     } else{
       stop("frac_type should be NULL or one of median, mean or XIST")
     }

@@ -1,4 +1,5 @@
 # Read a list of known inactivated genes
+#' @export
 readXCI <- function(xciGenes = NULL){
   if(!is.null(xciGenes)){
     if(length(xciGenes) > 1){

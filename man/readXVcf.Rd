@@ -27,4 +27,3 @@ O. Delaneau, B. Howie, A. Cox, J-F. Zagury, J. Marchini (2013) Haplotype
 estimation using sequence reads. American Journal of Human Genetics 93 (4)
  787-696.
 }
-
