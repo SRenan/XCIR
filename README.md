@@ -5,8 +5,7 @@ X chromosome.
 readXvcf()
 addAnno()
 getGenicDP()
-getCellFrac()
-getXIexpr()
+betaBinomXI()
 ```
 ```
 getError()
