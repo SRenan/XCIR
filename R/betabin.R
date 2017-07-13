@@ -1,13 +1,13 @@
 #' @export
 betaBinomXI <- function(genic_dt,  method = "all", type = "midp", plot = FALSE, hist=FALSE,
-                        rm_inac = 2){
+                        rm_inac = 2, xciGenes = NULL){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
 
   # Use XCI to estimate parameters
   #if(xci > 0){
-    xcig <- readXCI()
+    xcig <- readXCI(xciGenes)
   #}
   #if(xci > 1){
   #  xcig <- xcig[! xcig %in% c(gNrm, "SEPT6")]
@@ -21,6 +21,9 @@ betaBinomXI <- function(genic_dt,  method = "all", type = "midp", plot = FALSE, 
   #}
   inactivated_genes <- xcig
   dt_xci <- dt[GENE %in% inactivated_genes]
+  if(nrow(dt_xci) == 0){
+    warning("No known silenced gene found in data.")
+  }
 
   samples <- unique(dt_xci$sample)
   #if(singlecell){
@@ -47,7 +50,7 @@ betaBinomXI <- function(genic_dt,  method = "all", type = "midp", plot = FALSE, 
     mm3 <- MM3(dt_xci, dt, balanced)
     setnames(mm3, "AIC", "AIC_mm3")
 
-    aics <- back_sel(bb, mm, mm2, mm3, plot=T)
+    aics <- back_sel(bb, mm, mm2, mm3, plot=plot)
 
     dt_bb <- bb[sample %in% aics[model == "AIC_bb", sample]]
     dt_mm <- mm[sample %in% aics[model == "AIC_mm", sample]]

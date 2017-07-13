@@ -3,7 +3,8 @@
 #' @importFrom ggplot2 scale_y_continuous scale_fill_manual ggtitle element_text
 #' @export
 plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
-                        inference = "asymptotic", nsamples =F, threshold = F){
+                        inference = "asymptotic", nsamples =F, threshold = F,
+                        theme = "gray", cutoffs = c(25, 75)){
   ns <- sub_xi[, .N, by = GENE] #Number of samples per gene
   if(inference == "asymptotic"){
     pe <- sub_xi[p_value < alpha, .N, by = GENE] #Samples where it escapes
@@ -17,20 +18,24 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
   dat <- merge(dat, unique(sub_xi[, list(GENE, POS)]), by = "GENE", all.x=T) #POS are needed to order the X axis
   setnames(dat, c("N.x", "N.y"), c("N_support", "N_escape"))
   dat[, pe := N_escape/N_support]
-
-  Nseq <- seq(0, max(dat$N_support) + 10, 10) #Bin the number of support genes
-  palette <- brewer.pal(3, "Set1")
-  colfunc <- colorRampPalette(c(palette[2], palette[1]))
-  ncolors <- length(unique(cut(dat$N_support, Nseq)))
-  colors <- colfunc(ncolors)
-
-  dat <- dat[N_support >= min_sup] #Also removes the genes with %e equal to 0 that dont have much support, as intended.
   dat <- dat[order(POS)]
-  dat <- unique(dat[, list(GENE, N_support, N_escape, pe)])
-  dat[, GENE := factor(GENE, levels = GENE)]
-  p <- ggplot(data = dat)
-  p <- p + geom_bar(aes(x = GENE, y = pe, fill = cut(N_support, Nseq)), stat = "identity")
-  p <- p + scale_fill_manual(values = colors, name = "Number of support samples")# + ylim(0, 1) #ylim throws warning if used with an extra scale
+
+  plotdat <- dat[N_support >= min_sup] #Also removes the genes with %e equal to 0 that dont have much support, as intended.
+  plotdat <- unique(plotdat[, list(GENE, N_support, N_escape, pe)])
+  plotdat[, GENE := factor(GENE, levels = GENE)]
+  p <- ggplot(data = plotdat)
+  if(theme == "gray"){
+    p <- p + geom_bar(aes(x = GENE, y = pe), stat = "identity")
+  } else{
+    Nseq <- seq(0, max(dat$N_support) + 10, 10) #Bin the number of support genes
+    palette <- brewer.pal(3, "Set1")
+    colfunc <- colorRampPalette(c(palette[2], palette[1]))
+    ncolors <- length(unique(cut(dat$N_support, Nseq)))
+    colors <- colfunc(ncolors)
+    p <- p + geom_bar(aes(x = GENE, y = pe, fill = cut(N_support, Nseq)), stat = "identity")
+    p <- p + scale_fill_manual(values = colors, name = "Number of support samples")# + ylim(0, 1) #ylim throws warning if used with an extra scale
+  }
+
   status_theme <- theme(axis.text.x = element_text(angle = 90, size = 7, vjust = .5),
                         plot.title = element_text(hjust=0.5))
   status_scale <- scale_y_continuous(limits = c(0, 1), expand = c(0.003, 0))
@@ -38,9 +43,11 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
     p <- p+geom_text(aes(label=N_support, x=GENE, y=0.05))
   }
   if(is.null(rownames)){
-    ngenes <- length(unique(dat$GENE))
+    ngenes <- length(unique(plotdat$GENE))
     if(ngenes > 100){
-      status_theme <- status_theme + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+      status_theme <- status_theme + theme(axis.text.x = element_blank(),
+                                           axis.ticks.x = element_blank(),
+                                           panel.grid.major.x = element_blank())
     }
   } else if(!rownames){
     status_theme <- status_theme + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
@@ -48,7 +55,7 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
   p <- p + status_theme + status_scale + ylab("%escape") + ggtitle("Percentage of escape accross samples")
   print(p)
 
-  return(dat)
+  return(plotdat)
 }
 
 
