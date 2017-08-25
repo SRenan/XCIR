@@ -1,24 +1,14 @@
 #' @export
-betaBinomXI <- function(genic_dt,  method = "all", type = "midp", plot = FALSE, hist=FALSE,
-                        rm_inac = 2, xciGenes = NULL){
+betaBinomXI <- function(genic_dt,  method = "all", type = "midp",
+                        plot = FALSE, hist = FALSE, graph_summary = FALSE,
+                        xciGenes = NULL, verbose = F){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
 
   # Use XCI to estimate parameters
   #if(xci > 0){
-    xcig <- readXCI(xciGenes)
-  #}
-  #if(xci > 1){
-  #  xcig <- xcig[! xcig %in% c(gNrm, "SEPT6")]
-  #  xcig <- xcig[! xcig %in% c(gNrm)]
-  #}
-  #if(xci > 2){
-  # dt_xci <- rmInac(dt_xci, rm_inac)
-  #}
-  #if(tolower(xci) == "j"){
-  # xcig <- jcss[statusJ == "S", GENE]
-  #}
+  xcig <- readXCI(xciGenes)
   inactivated_genes <- xcig
   dt_xci <- dt[GENE %in% inactivated_genes]
   if(nrow(dt_xci) == 0){
@@ -26,7 +16,7 @@ betaBinomXI <- function(genic_dt,  method = "all", type = "midp", plot = FALSE, 
   }
 
   samples <- unique(dt_xci$sample)
-  #if(singlecell){
+  #if(singlecell){ # because the 100%skewed are used as truth
   #  balanced <- samples[!samples %in% getSkewedSamples(dt)]
   #} else{
     balanced <- samples
@@ -41,7 +31,7 @@ betaBinomXI <- function(genic_dt,  method = "all", type = "midp", plot = FALSE, 
   } else if(method == "MM3"){
     dt <- MM3(dt_xci, dt, balanced)
   } else if(method == "all"){
-    bb <- BB(dt_xci, dt, balanced)
+    bb <- BB(dt_xci, dt, balanced, verbose = F)
     setnames(bb, "AIC", "AIC_bb")
     mm <- MM(dt_xci, dt, balanced)
     setnames(mm, "AIC", "AIC_mm")
@@ -102,8 +92,27 @@ dbb <- function(x, n, a, b){#Beta binomial
     bn <- beta(x+a, n-x+b)
     bd <- beta(a, b)
     y <- c * bn / bd
-    y[is.nan(y)] <- 0
+    #y[is.nan(y)] <- 0
+    ninf <- sum(is.infinite(y))
+    if(ninf > 0){
+      warning(paste("dbb returns",ninf, "infinite values"))
+    }
+    y <- y[is.finite(y)]
     return(y);
+}
+
+# Calculate log likelihood directly to avoid computation overflow
+ldbb <- function(x, n, a, b){
+  lc <- lchoose(n, x)
+  lbn <- lbeta(x+a, n-x+b)
+  lbd <- lbeta(a, b)
+  ly <- lc + lbn - lbd
+  ninf <- sum(is.infinite(ly))
+  if(ninf > 0){
+    warning(paste("ldbb returns",ninf, "infinite values"))
+  }
+  ly <- ly[is.finite(ly)]
+  return(ly)
 }
 
 # P-values for exact inference
@@ -133,12 +142,14 @@ pbb <- function(x, n, a, b, type = "midp"){ #p-value for exact inference
 ################################################################################
 # Beta-binomial model:
 
-BB <- function(dt_xci, full_dt, balanced){
+BB <- function(dt_xci, full_dt, balanced, verbose = F){
   dt <- copy(full_dt)
   for(sample_i in balanced){
     a0  <- c(1,1);
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
+    if(verbose)
+      print(paste0("-----",sample_i,"-----"))
     res_optim <- nlminb(a0, logL_BB, dp1 = dp1, dp = dp)
     dt[sample == sample_i, a_est := exp(res_optim$par[1])]
     dt[sample == sample_i, b_est := exp(res_optim$par[2])]
@@ -151,8 +162,9 @@ BB <- function(dt_xci, full_dt, balanced){
 logL_BB <- function(a, dp1, dp){
   a1 <- exp(a[1])
   b1 <- exp(a[2])
-  logLbb <- sum(log(dbb(dp1,dp,a1,b1))*(-1));
-  return(logLbb);
+  logLbb <- sum(ldbb(dp1,dp,a1,b1)*(-1), na.rm = T)
+  # logLbb <- sum(log(dbb(dp1,dp,a1,b1))*(-1), na.rm = T)
+  return(logLbb)
 }
 ################################################################################
 # Mixture models:
@@ -197,7 +209,7 @@ MM2 <- function(dt_xci, full_dt, balanced){
             log(0.9/0.1)) #Initial proba that any XCIg is actually escaped in this sample
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
-    res_optim <- nlminb(a0, logL_MM2, dp1 = dp1, dp = dp)
+    res_optim <- nlminb(a0, logL_MM2, dp1 = dp1, dp = dp, lower = c(0, 0, 0, 0))
     p_inac_i <- exp(res_optim$par[5])/(1 + exp(res_optim$par[5]))
     # Selecting the right component to get alpha/beta corresponding to the inactivated group
     if(p_inac_i >= .5){ # We assume that the list should always have a majority of inactivated genes
@@ -224,6 +236,10 @@ MM2 <- function(dt_xci, full_dt, balanced){
   return(dt)
 }
 logL_MM2 <- function(a, dp1, dp) {
+  print("------------")
+  print(paste("a =", paste(a, collapse = ",")))
+  print(paste("dp1 = c(", paste(dp1, collapse = ",")))
+  print(paste("dp = c(", paste(dp, collapse = ",")))
   # Inactivated gene from XCI
   ai <- exp(a[1]);
   bi <- exp(a[2]);
@@ -231,11 +247,16 @@ logL_MM2 <- function(a, dp1, dp) {
   ae <- exp(a[3])
   be <- exp(a[4])
 
-  p_inac <- exp(a[5])/(1+exp(a[5])) #Proba that the team is indeed inactivated
-  pbbi <- dbb(dp1, dp, ai, bi)
-  pbbe <- dbb(dp1, dp, ae, be)
-  p_tot <- p_inac * pbbi + (1-p_inac) * pbbe
+  p_inac <- exp(a[5])/(1+exp(a[5])) #Proba that the gene is indeed inactivated (0.9)
+  print(paste("p_inac:", p_inac))
+  #pbbi <- dbb(dp1, dp, ai, bi)
+  #pbbe <- dbb(dp1, dp, ae, be)
+  #p_tot <- p_inac * pbbi + (1-p_inac) * pbbe
+  lpbbi <- ldbb(dp1, dp, ai, bi)
+  lpbbe <- ldbb(dp1, dp, ae, be)
+  p_tot <- p_inac * exp(lpbbi) + (1-p_inac) * exp(lpbbe)
   logL  <- -sum(log(p_tot))
+  print(paste("LL:", logL))
   return(logL);
 }
 
@@ -250,7 +271,7 @@ MM3 <- function(dt_xci, full_dt, balanced){
             log(0.02/0.98))
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
-    res_optim <- nlminb(a0, logL_MM3, dp1 = dp1, dp = dp)
+    res_optim <- nlminb(a0, logL_MM3, dp1 = dp1, dp = dp, lower = c(0, 0, 0, 0))
     p_inac_i <- exp(res_optim$par[5])/(1 + exp(res_optim$par[5]))
     if(p_inac_i >= .5){ # We assume that the list should always have a majority of inactivated genes
       a_est_i <- exp(res_optim$par[1])
@@ -290,11 +311,16 @@ logL_MM3 <- function(a, dp1, dp){
   p_het <- exp(a[6])/(1+exp(a[6]))
   pi_err  <- .01 + .99*exp(a[7])/(1+exp(a[7]))
 
-  pbb_i <- dbb(dp1, dp, ai, bi)
-  pbb_e <- dbb(dp1, dp, ae, be)
+  #pbb_i <- dbb(dp1, dp, ai, bi)
+  #pbb_e <- dbb(dp1, dp, ae, be)
+  lpbb_i <- ldbb(dp1, dp, ai, bi)
+  lpbb_e <- ldbb(dp1, dp, ae, be)
   pb_err <- dbinom(dp1, dp, pi_err)
-  p_tot <- p_het * (p_inac * pbb_i + # Reads from component1
-                   (1-p_inac) * pbb_e) + # Reads from component2
+  #p_tot <- p_het * (p_inac * pbb_i + # Reads from component1
+  #                 (1-p_inac) * pbb_e) + # Reads from component2
+  #         (1-p_het) * pb_err # Reads from sequencing error
+  p_tot <- p_het * (p_inac * exp(lpbb_i) + # Reads from component1
+                   (1-p_inac) * exp(lpbb_e)) + # Reads from component2
            (1-p_het) * pb_err # Reads from sequencing error
 
   logL <- -sum(log(p_tot))
@@ -348,7 +374,7 @@ plotBBCellFrac <- function(xci_dt, xcig = T, gene_names = ""){
   } else{
     plotfrac[abs(fg - f) > .2, label := GENE]
   }
-  p <- ggplot(plotfrac, aes(x = index, y = fg)) + geom_point() +
+  p <- ggplot(plotfrac, aes(x = index, y = fg)) + geom_point(aes(shape = model)) +
     geom_hline(aes(yintercept = f, colour = "1"))
   p <- p + geom_text(aes(label = label))
   p <- p + geom_text(aes(x = N - 5, y= max(fg) + .01, label = paste("N =", N)))
@@ -364,9 +390,22 @@ plotBBCellFrac <- function(xci_dt, xcig = T, gene_names = ""){
     p <- p + scale_colour_manual(name = "fraction", values = c("red", "blue"), labels = c("mean", "sequencing error")) +
       theme(legend.position = c(.8, 0.2))
   } else{
-    p <- p + scale_colour_manual(name = "fraction", values = c("red"), labels = c("mean")) +
-      theme(legend.position = c(.8, 0.2))
+    #p <- p + scale_colour_manual(name = "fraction", values = c("red"), labels = c("mean")) +
+    #  theme(legend.position = c(.8, 0.2))
+    p <- p + scale_colour_manual(name = "fraction", values = c("red"), labels = c("mean"))
   }
   print(p)
   return(NULL)
 }
+
+  #}
+  #if(xci > 1){
+  #  xcig <- xcig[! xcig %in% c(gNrm, "SEPT6")]
+  #  xcig <- xcig[! xcig %in% c(gNrm)]
+  #}
+  #if(xci > 2){
+  # dt_xci <- rmInac(dt_xci, rm_inac)
+  #}
+  #if(tolower(xci) == "j"){
+  # xcig <- jcss[statusJ == "S", GENE]
+  #}

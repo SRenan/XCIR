@@ -146,7 +146,9 @@ seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
   write_siteRef(input, ref_file = inFile) #Write annotations into the file that will be used by seqminer
   param <- (list(reference = reference, geneFile = geneFile, inputFormat = "plain"))
   output_file <- file.path(output_dir, "anno_out")
-  annotatePlain(inFile, output_file, params=param) #seqminer does not allow using an existing filename
+  capture.output({
+    annotatePlain(inFile, output_file, params=param) #seqminer does not allow using an existing filename
+  })
   return(output_file)
 }
 
