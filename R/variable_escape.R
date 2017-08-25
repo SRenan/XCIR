@@ -52,7 +52,12 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
   } else if(!rownames){
     status_theme <- status_theme + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
   }
-  p <- p + status_theme + status_scale + ylab("%escape") + ggtitle("Percentage of escape accross samples")
+  if(max(sub_xi$f) < .25){
+    title <- "Percentage of escape accross skewed samples (> 25/75)"
+  } else{
+    title <- "Percentage of escape accross samples"
+  }
+  p <- p + status_theme + status_scale + ylab("%escape") + ggtitle(title)
   print(p)
 
   return(plotdat)
