@@ -1,3 +1,7 @@
+# One day I will take the time to have an actual data structure instead
+# of a gigantic data.table.
+
+
 # data.table
 # read_count_cutoff
 # inactivation_cutoff

@@ -6,6 +6,17 @@
 \usage{
 plotBBCellFrac(xci_dt, xcig = T, gene_names = "")
 }
+\arguments{
+\item{xci_dt}{A \code{data.table}. The data to be used for the estimate
+of skewing (i.e: limited to XCI genes).}
+
+\item{xcig}{A \code{logical}. If \code{xci_dt} was not subset for training
+genes only, setting xcig to TRUE will filter the data.}
+
+\item{gene_names}{A \code{character}. If left blank, only genes that are
+further than 20% away from the estimated skewing will be annotated, if set
+to "all", all genes will be named. Set to "none" to remove all annotations.}
+}
 \description{
 Plot cell fraction estimates from list of known XCI genes
 }

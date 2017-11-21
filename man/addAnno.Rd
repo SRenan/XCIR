@@ -4,14 +4,15 @@
 \alias{addAnno}
 \title{Read annotation file}
 \usage{
-addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 10,
+addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
   filter_mono_cutoff = 3, anno_file = NULL)
 }
 \arguments{
 \item{dt}{A \code{data.table} object.}
 
 \item{seqm_annotate}{A \code{logical}. If set to TRUE, the \code{seqminer}
-package will be used to annotate \code{dt}}
+package will be used to annotate \code{dt}. If set to FALSE, this function
+is a simple read count filtering step.}
 
 \item{read_count_cutoff}{A \code{numeric}. Keep only SNPs that have at least
 that many reads.}
@@ -27,7 +28,8 @@ and annotations at the covered SNPs.
 }
 \description{
 Read a given annotation file and merge it with a data.table containing the
-relevant information to exstimate inactivated X chromosome expression.
+relevant information to exstimate inactivated X chromosome expression and
+filter out SNPs with low coverage.
 }
 \details{
 \code{filter_mono_cutoff} will remove SNPs that do not have at least one read

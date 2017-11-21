@@ -1,10 +1,44 @@
 # # When the truth is unknown, plot the % of escape for every gene
+
+#' Plot escape across X
+#'
+#' Barplot of the escape status of X-linked genes. Each bar represent the
+#' proportions of samples in which a gene is found to escape.
+#' Genes are ordered along the X chromosome.
+#'
+#' @param sub_xi A \code{data.table}. The output of \code{betaBinomXI}.
+#' @param alpha A \code{numeric} between 0 and 1. The significance level for
+#' escape calls.
+#' @param min_sup A \code{numeric}. Only genes with at least that many samples
+#' will be displayed.
+#' @param rownames A \code{logical} or NULL. If set to NULL, gene names will
+#' be displayed only if there are less than 100 genes on the plot.
+#' @param inference A \code{character}. Which of the \code{betaBinomXI}
+#' predictions should be used, "asymptotic" or "exact".
+#' @param nsamples A \code{logical}. If TRUE, display the total number of samples
+#' in the dataset.
+#' @param cutoffs A \code{numeric} vector of length 2. The boundaries for
+#' calling subject, variable and escape genes.
+#' @param theme A \code{character}. Available options are "gray", "status" and
+#' "samplecount".
+#' @param hg A \code{numeric}. The genome version that was used to align the
+#' RNA-Seq data. This is used to display annotations.
+#'
+#' @return An invisible \code{data.table} with the following columns
+#' \item{GENE}{Gene symbol}
+#' \item{N_support}{The number of samples for which a prediction was made for that gene}
+#' \item{N_escape}{The number of samples where this gene was found to escape}
+#' \item{pe}{The fraction of escape, N_escape/N_support}
+#'
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom ggplot2 scale_y_continuous scale_fill_manual ggtitle element_text
+#' @importFrom ggplot2 geom_vline geom_bar
+#' @importFrom ggplot2 aes
+#' @importFrom grDevices colorRampPalette
 #' @export
 plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
-                        inference = "asymptotic", nsamples =F, threshold = F,
-                        theme = "gray", cutoffs = c(25, 75)){
+                        inference = "asymptotic", nsamples =F, cutoffs = c(25, 75),
+                        theme = "gray", hg = 19){
   ns <- sub_xi[, .N, by = GENE] #Number of samples per gene
   if(inference == "asymptotic"){
     pe <- sub_xi[p_value < alpha, .N, by = GENE] #Samples where it escapes
@@ -23,9 +57,19 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
   plotdat <- dat[N_support >= min_sup] #Also removes the genes with %e equal to 0 that dont have much support, as intended.
   plotdat <- unique(plotdat[, list(GENE, N_support, N_escape, pe)])
   plotdat[, GENE := factor(GENE, levels = GENE)]
-  p <- ggplot(data = plotdat)
+  p <- ggplot(data = plotdat, mapping = aes(x = GENE, y = pe))
   if(theme == "gray"){
     p <- p + geom_bar(aes(x = GENE, y = pe), stat = "identity")
+  } else if(theme == "status"){
+    xmax <- nrow(plotdat)
+    p <- p + geom_rect(data = NULL, xmin = 0, xmax = 275, ymin = 0, ymax = .25, fill = "lightyellow") +
+             geom_rect(data = NULL, xmin = 0, xmax = xmax, ymin = .25, ymax = .75, fill = "lightgreen") +
+             geom_rect(data = NULL, xmin = 0, xmax = xmax, ymin = .75, ymax = 1, fill = "lightblue")
+    p <- p + geom_bar(stat = "identity")
+    xmaxlabel <- ifelse(xmax > 10, xmax -1, xmax)
+    p <- p + geom_text(aes(label = "Escape", xmaxlabel, y = .76, hjust = 1, vjust = 0), color = "red", cex = 10) +
+             geom_text(aes(label = "Variable", xmaxlabel, y = .5, hjust = 1),color = "red", cex = 10) +
+             geom_text(aes(label = "X inactivated", xmaxlabel, y = .24, hjust = 1, vjust = 1), color = "red",cex = 10)
   } else{
     Nseq <- seq(0, max(dat$N_support) + 10, 10) #Bin the number of support genes
     palette <- brewer.pal(3, "Set1")
@@ -34,6 +78,19 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
     colors <- colfunc(ncolors)
     p <- p + geom_bar(aes(x = GENE, y = pe, fill = cut(N_support, Nseq)), stat = "identity")
     p <- p + scale_fill_manual(values = colors, name = "Number of support samples")# + ylim(0, 1) #ylim throws warning if used with an extra scale
+  }
+  # Add vertical line to denote PAR1 region
+  if(hg == 19){
+    par1_l <- 60001
+    par1_u <- 2699520
+    par1_ug <- length(unique(dat[POS < par1_u, GENE]))
+    if(par1_ug > 0){
+      p <- p + geom_vline(xintercept = par1_ug + .5, color = "red") #+
+               #geom_text(aes(label = "PAR1", x = par1_ug, y = 1.1, hjust = 1, vjust = 0), color = "red")
+    }
+  } else if(hg == 38){
+    par1_l <- 10001
+    par1_u <- 2781479
   }
 
   status_theme <- theme(axis.text.x = element_text(angle = 90, size = 7, vjust = .5),
@@ -53,14 +110,14 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
     status_theme <- status_theme + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
   }
   if(max(sub_xi$f) < .25){
-    title <- "Percentage of escape accross skewed samples (> 25/75)"
+    title <- "Percentage of escape across skewed samples (> 25/75)"
   } else{
-    title <- "Percentage of escape accross samples"
+    title <- "Percentage of escape across samples"
   }
   p <- p + status_theme + status_scale + ylab("%escape") + ggtitle(title)
   print(p)
 
-  return(plotdat)
+  return(invisible(plotdat))
 }
 
 
@@ -79,12 +136,19 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
 #'  will be categorized as escaping inactivation.
 #' @param min_support A \code{numeric}. Only calculate percentage of escape for
 #'  genes that have at least that many samples for which a prediction was made.
+#' @param plot A \code{logical}. If set to FALSE, do not print the plot and only
+#' return the (invisible) \code{data.table}.
 #'
-#' @return An invisible \code{data.table} with one row for each gene.
+#' #' @return An invisible \code{data.table} with the following columns
+#' \item{GENE}{Gene symbol}
+#' \item{N_support}{The number of samples for which a prediction was made for that gene}
+#' \item{N_escape}{The number of samples where this gene was found to escape}
+#' \item{pe}{The fraction of escape, N_escape/N_support}
 #'
 #' @export
-plot_status_fraction <- function(xi, alpha = .05, inference = "asymptotic", threshold = c(.25, .75), min_support = 0, plot = TRUE){
-  dat <- get_status(xi, alpha = alpha, inference = inference)
+plot_status_fraction <- function(xi, alpha = .05, inference = "asymptotic",
+                                 threshold = c(.25, .75), min_support = 0, plot = TRUE){
+  dat <- .get_status(xi, alpha = alpha, inference = inference)
   dat <- dat[N_support >= min_support]
 
   dat[, status := ifelse(pe <  threshold[1], "subject", "variable")]
@@ -103,7 +167,7 @@ plot_status_fraction <- function(xi, alpha = .05, inference = "asymptotic", thre
   return(invisible(dat[]))
 }
 
-get_status <- function(xi, alpha, inference){
+.get_status <- function(xi, alpha, inference){
   ns <- xi[, .N, by = GENE] #Number of samples per gene
   if(inference == "asymptotic"){
     pe <- xi[p_value < alpha, .N, by = GENE] #Samples where it escapes
@@ -119,33 +183,7 @@ get_status <- function(xi, alpha, inference){
   return(dat)
 }
 
-#' @export
-concordance <- function(xi, xciGenes = NULL, inference = "exact"){
-  if(is.null(xciGenes))
-    xcig <- readXCI()
-  else
-    xcig <- xciGenes
-  skews <- c(15, 25, 50)
-  l <- vector('list', length(skews))
-  names(l) <- paste0("s", skews)
-  for(skew in skews){
-    par1   <- plot_status_fraction(xi[f < skew/100 & POS < 2699520], inference = inference, plot = F)
-    xci177 <- plot_status_fraction(xi[f < skew/100 & GENE %in% xcig], inference = inference, plot = F)
-    all    <- plot_status_fraction(xi[f < skew/100], inference = inference, plot = F)
-    par1[, region := "Par 1"]
-    xci177[, region := "XCI"]
-    all[, region := "chrX"]
-    s <- rbindlist(list(par1, xci177, all))
-    s[, skew := skew]
-    l[[paste0("s", skew)]] <- s
-  }
-  dat <- rbindlist(l)
-  p <- ggplot(dat) + geom_bar(aes(status, fill = status)) +
-    geom_text(aes(status, y = count, label = paste(percent, "%"))) +
-    facet_grid(region ~ skew, scales = "free_y")
-  print(p)
-  return(dat)
-}
+
 
 #' Cochran-Mantel-Haenszel test
 #'

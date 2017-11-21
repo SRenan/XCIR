@@ -5,10 +5,12 @@
 #'
 #' Read SNPs from RNA-Seq that have not been phased.
 #'
-#' @details
-#' For phased samples, us \code{readXVcf}.
+#' @param vcf_file A \code{character}. The path to a vcf file.
 #'
-#' @param vcf_file The result of the pileup
+#' @details
+#' For phased samples, use \code{readXVcf}.
+#'
+#' @param vcf_file The result of a pileup
 #' @export
 readRNASNPs <- function(vcf_file){
   vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("AD"))

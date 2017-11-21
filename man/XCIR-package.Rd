@@ -5,7 +5,7 @@
 \alias{XCIR}
 \title{Estimating inactivated X chromosome expression
 
-Estimating inactivated X chromosome expression in R.}
+Tools for the analysis of X chromosome inactivation (XCI) and XCI-escape inference.}
 \author{
-Renan Sauteraud
+Renan Sauteraud <rxs575@psu.edu>
 }
