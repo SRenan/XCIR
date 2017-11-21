@@ -4,8 +4,8 @@
 \alias{getError}
 \title{Plot error and power}
 \usage{
-getError(xi, frac_type = NULL, alpha = 0.05, escape_cutoff = 1,
-  inac_cutoff = 2, plot = TRUE, xciGenes = TRUE)
+getError(xi, alpha = 0.05, escape_cutoff = 1, inac_cutoff = 2,
+  plot = TRUE, xciGenes = TRUE)
 }
 \description{
 Plot power and type 1 error for each sample. Using the most skewed samples

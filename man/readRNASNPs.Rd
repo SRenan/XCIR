@@ -7,11 +7,13 @@
 readRNASNPs(vcf_file)
 }
 \arguments{
-\item{vcf_file}{The result of the pileup}
+\item{vcf_file}{A \code{character}. The path to a vcf file.}
+
+\item{vcf_file}{The result of a pileup}
 }
 \description{
 Read SNPs from RNA-Seq that have not been phased.
 }
 \details{
-For phased samples, us \code{readXVcf}.
+For phased samples, use \code{readXVcf}.
 }

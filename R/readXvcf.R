@@ -131,7 +131,7 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
 
 
 #' @importFrom seqminer annotatePlain makeAnnotationParameter
-seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
+.seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
   if(is.null(reference)){
     reference <- system.file("extdata", "human.g1k.v37.fa", package = "XCIR")
     if(!file.exists(reference))
@@ -143,7 +143,7 @@ seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
       stop("No gene file given or found.")
   }
   inFile <- tempfile(tmpdir = output_dir)
-  write_siteRef(input, ref_file = inFile) #Write annotations into the file that will be used by seqminer
+  .write_siteRef(input, ref_file = inFile) #Write annotations into the file that will be used by seqminer
   param <- (list(reference = reference, geneFile = geneFile, inputFormat = "plain"))
   output_file <- file.path(output_dir, "anno_out")
   capture.output({
@@ -152,14 +152,17 @@ seqm_anno <- function(input, output_dir, reference = NULL, geneFile = NULL){
   return(output_file)
 }
 
+
 #' Read annotation file
 #'
 #' Read a given annotation file and merge it with a data.table containing the
-#' relevant information to exstimate inactivated X chromosome expression.
+#' relevant information to exstimate inactivated X chromosome expression and
+#' filter out SNPs with low coverage.
 #'
 #' @param dt A \code{data.table} object.
 #' @param seqm_annotate A \code{logical}. If set to TRUE, the \code{seqminer}
-#' package will be used to annotate \code{dt}
+#' package will be used to annotate \code{dt}. If set to FALSE, this function
+#' is a simple read count filtering step.
 #' @param read_count_cutoff A \code{numeric}. Keep only SNPs that have at least
 #'  that many reads.
 #' @param filter_mono_cutoff A \code{numeric}. If > 0, remove mono-allelic
@@ -180,7 +183,7 @@ addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20, filter_mon
   dt <- dt[AD_hap1 + AD_hap2 > read_count_cutoff]
   if(seqm_annotate){
     output_dir <- tempdir()
-    anno_file <- seqm_anno(input = copy(dt), output_dir)
+    anno_file <- .seqm_anno(input = copy(dt), output_dir)
   } else if(is.null(anno_file)){
     stop("No annotations given, set seqm_annotate to TRUE or provide an annotation filename to anno_file")
   }
@@ -201,7 +204,7 @@ addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20, filter_mon
 }
 
 #' @export
-write_siteRef <- function(dt, ref_file = "test_ref.anno.tsv"){
+.write_siteRef <- function(dt, ref_file = "test_ref.anno.tsv"){
   write.table(unique(dt[, list(CHROM, POS, REF, ALT)]), file = ref_file,
               row.names = FALSE, quote = FALSE, sep = "\t")
 }

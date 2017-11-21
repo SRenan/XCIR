@@ -1,4 +1,22 @@
-# Read a list of known inactivated genes
+#' Read a list of known inactivated genes
+#'
+#' Read a list of gene symbols of known inactivated genes
+#' to be used as training set in \code{betaBinomXI}.
+#'
+#' @param xciGenes A \code{character} or code{NULL}. By defaults, return a
+#' vector of 177 genes. Other available choices include "cotton" and "intersect".
+#' If a file path is given, the genes will be read from
+#' the file.
+#'
+#' @details
+#' The default gene list is from Carrel et al. Nature 2005. doi:10.1038/nature03479.
+#' Cotton, is a list of 294 inactivated genes compiled by Cotton et al. Genome
+#' Biology (2013). doi:10.1186/gb-2013-14-11-r122. Intersect is a more
+#' stringent list that takes the intersection of both Carrel and Cotton's lists.
+#'
+#' @seealso \code{betaBinomXI}
+#' @return A \code{character} vector of gene names.
+#'
 #' @export
 readXCI <- function(xciGenes = NULL){
   if(!is.null(xciGenes)){
@@ -25,7 +43,7 @@ readXCI <- function(xciGenes = NULL){
 }
 
 # Find the most skewed samples within an XCIR data.table
-getSkewedSamples <- function(data, n = 2){
+.getSkewedSamples <- function(data, n = 2){
   nsamples <- length(unique(data$sample))
   if(n < 1 | n > nsamples)
     stop(paste("n should be a number between 1 and", nsamples))
@@ -34,23 +52,9 @@ getSkewedSamples <- function(data, n = 2){
 }
 
 
-# Remove genes that are not inactivated in the 2 most skewed samples
-rmInac <- function(dt_xci, rm_inac){
-  if(!is.numeric(rm_inac)){
-    stop("rm_inac should be null or numeric")
-  }
-  xci_dt <- copy(dt_xci)
-  skewed <- getSkewedSamples(xci_dt)
-  notinactivated <- unique(c(xci_dt[grep(skewed[1], sample)][AD_hap1 > rm_inac & AD_hap2 > rm_inac, GENE],
-                             xci_dt[grep(skewed[2], sample)][AD_hap1 > rm_inac & AD_hap2 > rm_inac, GENE]))
-  xci_dt <- xci_dt[!GENE %in% notinactivated]
-  print(paste("Using", length(unique(xci_dt[, GENE])), "inactivated genes to calculate cell fraction."))
-  return(xci_dt)
-}
-
 # Find the allelic imbalance for each sample
 # Based on formula in Cotton et al. Genome Biology 2013
-getAI <- function(calls, labels = FALSE){
+.getAI <- function(calls, labels = FALSE){
   ai_dt <- unique(calls[, list(sample, GENE, POS, AD_hap1, AD_hap2, tot, f)])
   ai_dt <- unique(ai_dt[, list(sum(pmin(AD_hap1, AD_hap2)), sum(tot), f), by = sample]) # Assume that lowest expressed allele is Xi
   ai_dt[, pxa := (V2-V1)/V2]
@@ -64,4 +68,29 @@ getAI <- function(calls, labels = FALSE){
     p <- p + geom_text(aes(label = sample), vjust = 1.2)
   print(p)
   return(ai_dt)
+}
+
+#' Genes of interest
+#'
+#' These genes are particularly relevant to the biology of XCI.
+#'
+#' @return A \code{character} vector of gene symbols.
+#' @export
+#'
+GOI <- function(){
+  # Set of X/XCI relavant genes and aliases
+  goi <- character()
+  # DXZ4 is at the hinge that separates X into two superdomains
+  goi <- c(goi, "DXZ4", "DANT2")
+  # Genes that were found to be tumor suppressors in Male biased cancers (hypothesized
+  # to be escaping, thus requiring 2 mutations in female to disrupt suppressing activity)
+  goi <- c(goi, "ATRX", "KDM5C", "KDM6A", "DDX3X", "MAGEC3", "CNKSR2") # ASHG17 A.A. Lane, ATRX has never been found to escape so far. All others have.
+
+  # Genes involved in XCI
+  goi <- c(goi, "XIST", "TSIX", "TSIX|XIST", "FIRRE", "CTCF") # FIRRE helps maintain methylation on the Xi
+
+  #SLE associated genes
+  goi <- c(goi, "CXorf21", "IRAK1", "MECP2", "PRPS2")
+
+  return(goi)
 }

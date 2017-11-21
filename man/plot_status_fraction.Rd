@@ -22,9 +22,15 @@ will be categorized as escaping inactivation.}
 
 \item{min_support}{A \code{numeric}. Only calculate percentage of escape for
 genes that have at least that many samples for which a prediction was made.}
-}
-\value{
-An invisible \code{data.table} with one row for each gene.
+
+\item{plot}{A \code{logical}. If set to FALSE, do not print the plot and only
+return the (invisible) \code{data.table}.
+
+#' @return An invisible \code{data.table} with the following columns
+\item{GENE}{Gene symbol}
+\item{N_support}{The number of samples for which a prediction was made for that gene}
+\item{N_escape}{The number of samples where this gene was found to escape}
+\item{pe}{The fraction of escape, N_escape/N_support}}
 }
 \description{
 Barplot of the fraction of gene that are 'subject', 'variable' and 'escape'
