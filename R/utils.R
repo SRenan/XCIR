@@ -69,6 +69,18 @@ readXCI <- function(xciGenes = NULL){
   print(p)
   return(ai_dt)
 }
+.getAI <- function(calls){
+  ai_dt <- unique(calls[, list(sample, GENE, AD_hap1, AD_hap2, tot, f, tau, p_value)])
+  ai_dt[, xiexpr := pmin(AD_hap1, AD_hap2)/pmax(AD_hap1, AD_hap2)] #Assuming xaexpr is always 100%
+  ai_dt[, num := (1-f) + xiexpr * f]
+  ai_dt[, denom := ((1-f) * (xiexpr + 1)) + (f * (xiexpr + 1))]
+  ai_dt[, ai := abs(num/denom - 0.5)]
+}
+# Samples with ai < cutoffs are subject to XCI
+plot_escape_fraction <- function(ai, cutoff = .1){
+  fai <- ai[, Nsamples := .N, by = "GENE"]
+  fai <- fai[ai < cutoff, Ninac := .N, ]
+}
 
 #' Genes of interest
 #'
