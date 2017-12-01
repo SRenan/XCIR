@@ -57,17 +57,22 @@ getError <- function(xi, alpha = .05, escape_cutoff = 1, inac_cutoff = 2, plot =
   err <- rbind(err1, err2)
 
   setnames(err, c("N.x", "N.y"), c("N", "N_info"))
+  err[type == "typeI", ymin := value -1.96*sqrt((N/N_info)*(1-N/N_info)/N_info)]
+  err[type == "typeI", ymax := value +1.96*sqrt((N/N_info)*(1-N/N_info)/N_info)]
   if(plot){
-    err[type == "typeI", ymin := value -1.96*sqrt((N/N_info)*(1-N/N_info)/N_info)]
-    err[type == "typeI", ymax := value +1.96*sqrt((N/N_info)*(1-N/N_info)/N_info)]
-    p <- ggplot(err, aes(x = sample, y = value, fill = type)) + geom_bar(position = "dodge", stat = "identity")
-    p <- p + geom_text(aes(x = sample, y = value, label = paste0(N, "/", N_info)), position = position_dodge(0.9), vjust = -.25)
-    p <- p + geom_text(aes(x = 1.5, y = 1, label = paste0(length(escaped_genes), " escaped genes"))) +
-      geom_text(aes(x = 1.5, y = .95, label = paste0(length(inactivated_genes), " inactivated genes")))
-    p <- p + geom_errorbar(aes(ymax = ymax, ymin = ymin), position = position_dodge(.9), width = .25, na.rm = TRUE)
-    print(p)
+    .plot_errors(err, escaped_genes, inactivated_genes)
   }
 
   err[, value := round(value, 3)][]
   return(err)
+}
+
+.plot_errors <- function(err, escaped_genes, inactivated_genes){
+  p <- ggplot(err, aes(x = sample, y = value, fill = type)) + geom_bar(position = "dodge", stat = "identity")
+  p <- p + geom_text(aes(x = sample, y = value, label = paste0(N, "/", N_info)), position = position_dodge(0.9), vjust = -.25)
+  p <- p + geom_text(aes(x = 1.5, y = 1, label = paste0(length(escaped_genes), " escaped genes"))) +
+    geom_text(aes(x = 1.5, y = .95, label = paste0(length(inactivated_genes), " inactivated genes")))
+  p <- p + geom_errorbar(aes(ymax = ymax, ymin = ymin), position = position_dodge(.9), width = .25, na.rm = TRUE)
+  print(p)
+  return(p)
 }
