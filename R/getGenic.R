@@ -6,9 +6,16 @@
 #'
 #' @param dt_anno A \code{data.table}. An annotated table of read counts for
 #'  each SNP, as outputted by \code{addAnno}
+#' @param highest_expr A \code{logical}. If FALSE, all SNPs will be
+#'  summed within each gene. This should only be set to FALSE when high quality
+#'  phasing information is available. If set to TRUE, the highest expressed SNP
+#'  (across both alleles) will be used instead.
 #' @param pool A \code{logical}. Only works when \code{highest_expr} is set to
 #'  TRUE. If set to TRUE, the read counts are pooled accross all samples for
 #'  each SNP. Only use this if the samples come from the same subject
+#' @param gender_file A \code{character} or NULL. Leave NULL if \code{dt_anno}
+#'  already contains a gender column. The file must contain at least a "sample"
+#'  and "gender" column with samples matching the samples in \code{dt_anno}.
 #'
 #' @return A \code{data.table}. That should be used as input for
 #'  \code{betaBinomXI}.

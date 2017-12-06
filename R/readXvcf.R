@@ -1,4 +1,4 @@
-  makeDTFromGeno <- function(geno){
+.makeDTFromGeno <- function(geno){
   # Fix samplenames, find CHROM and POS from rownames.
   sampleNames <-  gsub("\\..*", "", basename(colnames(geno)))
   rn <- rownames(geno)
@@ -50,7 +50,7 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
   # Extract allelic depth
   AD <- geno(nomono)$AD #We use unfiltered allele depth b/c filters are usually made for DNA data
   # AD is n1,n2, where n1 is the number of copies of ref and n2 is the number of copies of alt
-  dt <- makeDTFromGeno(AD)
+  dt <- .makeDTFromGeno(AD)
   dt[, ID := keep] #To filter the vcf when dt is filtered
 
   # Add reference and alternate alleles
@@ -97,7 +97,7 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
   } else{
     message("No haps file specified. The vcf file must contain phased samples.")
     GT <- geno(nomono)$GT
-    dtGT <- makeDTFromGeno(GT)
+    dtGT <- .makeDTFromGeno(GT)
     dtGT <- melt(dtGT, measure.vars = samples, variable.name = "sample", value.name = "GT")
     dtGT[, `:=`(c("h1", "h2"), tstrsplit(GT, split = "/"))]
     #TODO: split the genotype columns into h1, h2

@@ -24,13 +24,14 @@ will be categorized as escaping inactivation.}
 genes that have at least that many samples for which a prediction was made.}
 
 \item{plot}{A \code{logical}. If set to FALSE, do not print the plot and only
-return the (invisible) \code{data.table}.
-
-#' @return An invisible \code{data.table} with the following columns
+return the (invisible) \code{data.table}.}
+}
+\value{
+An invisible \code{data.table} with the following columns
 \item{GENE}{Gene symbol}
 \item{N_support}{The number of samples for which a prediction was made for that gene}
 \item{N_escape}{The number of samples where this gene was found to escape}
-\item{pe}{The fraction of escape, N_escape/N_support}}
+\item{pe}{The fraction of escape, N_escape/N_support}
 }
 \description{
 Barplot of the fraction of gene that are 'subject', 'variable' and 'escape'
