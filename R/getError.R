@@ -3,8 +3,24 @@
 #' Plot power and type 1 error for each sample. Using the most skewed samples
 #' as a reference. Used to asses the quality of the prediction.
 #'
+#' @param xi A \code{data.table}. Escape calls, as outputted by \code{betaBinomXI}.
+#' @param alpha A \code{numeric}. The significance level.
+#' @param escape_cutoff A \code{numeric}. A gene must have more reads than the
+#' cutoff on both alleles in the two skewed samples to be considered as
+#' escaping XCI.
+#' @param inac_cutoff A \code{numeric}. A gene must have at most that many reads
+#' on both alleles in the two skewed samples to be considered as subject to
+#' inactivation.
+#' @param plot A \code{logical}. If set to false, return Type1 error and power
+#' table without plotting barplots.
+#' @param xciGenes A \code{logical}. If set to TRUE, uses genes from the
+#' training set as inactivated genes (still subject to filtering via
+#' \code{inac_cutoff}). If set to FALSE, a hand curated gene list will be used
+#' insteda.
+#'
 #' @note
-#' This will only work if all samples belong to the same subject.
+#' This will only work if all samples belong to the same subject and two of the
+#' samples are mono-allelicly expressed.
 #'
 #' @importFrom ggplot2 ggplot position_dodge geom_errorbar geom_text
 #' @export

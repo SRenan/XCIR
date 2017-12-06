@@ -3,9 +3,10 @@
 \name{XCIR-package}
 \alias{XCIR-package}
 \alias{XCIR}
-\title{Estimating inactivated X chromosome expression
-
-Tools for the analysis of X chromosome inactivation (XCI) and XCI-escape inference.}
+\title{Estimating inactivated X chromosome expression}
+\description{
+Tools for the analysis of X chromosome inactivation (XCI) and XCI-escape inference.
+}
 \author{
 Renan Sauteraud <rxs575@psu.edu>
 }

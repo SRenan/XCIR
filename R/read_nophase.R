@@ -10,7 +10,6 @@
 #' @details
 #' For phased samples, use \code{readXVcf}.
 #'
-#' @param vcf_file The result of a pileup
 #' @export
 readRNASNPs <- function(vcf_file){
   vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("AD"))
@@ -23,7 +22,7 @@ readRNASNPs <- function(vcf_file){
   # Extract allelic depth
   AD <- geno(nomono)$AD #We use unfiltered allele depth b/c filters are usually made for DNA data
   # AD is n1,n2, where n1 is the number of copies of ref and n2 is the number of copies of alt
-  dt <- makeDTFromGeno(AD)
+  dt <- .makeDTFromGeno(AD)
   dt[, ID := keep] #To filter the vcf when dt is filtered
   ref <- as.character(ref(nomono))
   alt <- unstrsplit(CharacterList(alt(nomono)))

@@ -2,10 +2,34 @@
 #'
 #' Fit a mixture model to estimate mosaicism and XCI-escape.
 #'
+#' @param genic_dt A \code{data.table}. The table as outputted by \code{getGenicDP}.
+#' @param method A \code{character} indicating which model to use to estimate
+#'  the mosaicism. Valid choices are "all", "BB", "MM", "MM2", "MM3". See details.
+#' @param plot A \code{logical}. If set to TRUE, information about the training
+#'  set and the skewing estimate will be plotted.
+#' @param hist A \code{logical}. If set to TRUE, an histogram of the skewing
+#'  estimates will be displayed.
+#' @param graph_summary A \code{logical}. Unused. Will include better summary of
+#'  the fit.
+#' @param xciGenes A \code{character} or NULL. To be passed to \code{readXCI} to
+#'  select the training set of inactivated genes.
+#' @param limits A \code{logical}. If set to TRUE, the optimization will be
+#'  constrained. Using upper bounds on the probability of sequencing error and
+#'  escape in the training set ensures that the dominant mixture represents the
+#'  skewing for inactivated genes.
+#'
+#' @details
+#' The method determines the number of components used in the mixture model. By
+#' default, "all" tries all combinations of mixtures and the best estimate is
+#' kept using backward selection based on AIC.
+#' BB is a simple beta-binomial. MM adds a binomial component to model the
+#' sequencing errors. MM2 jointly models the probability of misclasification
+#' in the training set. MM3 include all 3 components.
+#'
+#' @seealso getGenicDP readXCI
 #' @export
-betaBinomXI <- function(genic_dt,  method = "all", type = "midp",
-                        plot = FALSE, hist = FALSE, graph_summary = FALSE,
-                        xciGenes = NULL, limits = F){
+betaBinomXI <- function(genic_dt,  method = "all", plot = FALSE, hist = FALSE,
+                        graph_summary = FALSE, xciGenes = NULL, limits = FALSE){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
@@ -44,7 +68,7 @@ betaBinomXI <- function(genic_dt,  method = "all", type = "midp",
     mm3 <- MM3(dt_xci, dt, balanced, limits)
     setnames(mm3, "AIC", "AIC_mm3")
 
-    aics <- back_sel(bb, mm, mm2, mm3, plot=plot)
+    aics <- .back_sel(bb, mm, mm2, mm3, plot=plot)
 
     dt_bb <- bb[sample %in% aics[model == "AIC_bb", sample]]
     dt_mm <- mm[sample %in% aics[model == "AIC_mm", sample]]
@@ -75,7 +99,7 @@ betaBinomXI <- function(genic_dt,  method = "all", type = "midp",
   dt[, var_fg := var_fg/((a_est + b_est)^2 * (a_est + b_est + 1))]
   dt[, var_fg := var_fg/tot^2] # Because we want the variance for the fraction, not the variance for the counts
   dt[, t := (fg-f)/sqrt(var_fg)] #Test statistic
-  dt[, pbb := pbb(dp1, tot, a_est, b_est, type = type), by = c("GENE", "sample")]
+  dt[, pbb := pbb(dp1, tot, a_est, b_est, type = "midp"), by = c("GENE", "sample")]
   dt[, p_value := pnorm(t, lower.tail = F)]
 
   #tau is the Xi expression
@@ -360,7 +384,7 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
 }
 ################################################################################
 # Model selection
-back_sel <- function(bb, mm, mm2, mm3, plot = FALSE){
+.back_sel <- function(bb, mm, mm2, mm3, plot = FALSE){
   aics <- merge(unique(mm[, list(sample, AIC_mm)]), unique(mm2[, list(sample, AIC_mm2)]), by = "sample")
   aics <- merge(aics, unique(mm3[, list(sample, AIC_mm3)]), by = "sample")
   aics <- merge(aics, unique(bb[, list(sample, AIC_bb)]), by = "sample")

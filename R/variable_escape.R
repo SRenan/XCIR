@@ -139,7 +139,7 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
 #' @param plot A \code{logical}. If set to FALSE, do not print the plot and only
 #' return the (invisible) \code{data.table}.
 #'
-#' #' @return An invisible \code{data.table} with the following columns
+#' @return An invisible \code{data.table} with the following columns
 #' \item{GENE}{Gene symbol}
 #' \item{N_support}{The number of samples for which a prediction was made for that gene}
 #' \item{N_escape}{The number of samples where this gene was found to escape}
@@ -248,8 +248,3 @@ print_cmh <- function(cmh_list, alpha = .05){
   return(NULL)
 }
 
-#' @importFrom pheatmap pheatmap
-#' @export
-res_heatmap <- function(XCIres, value="tau", condition=NULL, FC=FALSE){
-  data <- dcast(XCIres, GENE ~ sample, value.var = value)
-}
