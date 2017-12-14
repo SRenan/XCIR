@@ -47,7 +47,8 @@ readXCI <- function(xciGenes = NULL){
   nsamples <- length(unique(data$sample))
   if(n < 1 | n > nsamples)
     stop(paste("n should be a number between 1 and", nsamples))
-  skewed_samples <- as.character(data[, median(pmin(AD_hap1, AD_hap2)/(AD_hap1+AD_hap2)), by = sample][order(V1)][1:n, sample])
+  skewed_samples <- as.character(data[, median(pmin(AD_hap1, AD_hap2)/(AD_hap1+AD_hap2), na.rm = T),
+                                      by = sample][order(V1)][1:n, sample])
   return(skewed_samples)
 }
 
