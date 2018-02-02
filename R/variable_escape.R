@@ -33,7 +33,7 @@
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom ggplot2 scale_y_continuous scale_fill_manual ggtitle element_text
 #' @importFrom ggplot2 geom_vline geom_bar
-#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 aes theme
 #' @importFrom grDevices colorRampPalette
 #' @export
 plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,

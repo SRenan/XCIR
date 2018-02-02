@@ -4,14 +4,14 @@
 \alias{betaBinomXI}
 \title{Fit mixture model}
 \usage{
-betaBinomXI(genic_dt, method = "all", plot = FALSE, hist = FALSE,
+betaBinomXI(genic_dt, model = "AUTO", plot = FALSE, hist = FALSE,
   graph_summary = FALSE, xciGenes = NULL, limits = FALSE)
 }
 \arguments{
 \item{genic_dt}{A \code{data.table}. The table as outputted by \code{getGenicDP}.}
 
-\item{method}{A \code{character} indicating which model to use to estimate
-the mosaicism. Valid choices are "all", "BB", "MM", "MM2", "MM3". See details.}
+\item{model}{A \code{character} indicating which model to use to estimate
+the mosaicism. Valid choices are "AUTO", "BB", "MM", "MM2", "MM3". See details.}
 
 \item{plot}{A \code{logical}. If set to TRUE, information about the training
 set and the skewing estimate will be plotted.}
@@ -34,8 +34,8 @@ skewing for inactivated genes.}
 Fit a mixture model to estimate mosaicism and XCI-escape.
 }
 \details{
-The method determines the number of components used in the mixture model. By
-default, "all" tries all combinations of mixtures and the best estimate is
+The model determines the number of components used in the mixture model. By
+default, "AUTO" tries all combinations of mixtures and the best estimate is
 kept using backward selection based on AIC.
 BB is a simple beta-binomial. MM adds a binomial component to model the
 sequencing errors. MM2 jointly models the probability of misclasification
