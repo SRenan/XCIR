@@ -3,8 +3,8 @@
 #' Fit a mixture model to estimate mosaicism and XCI-escape.
 #'
 #' @param genic_dt A \code{data.table}. The table as outputted by \code{getGenicDP}.
-#' @param method A \code{character} indicating which model to use to estimate
-#'  the mosaicism. Valid choices are "all", "BB", "MM", "MM2", "MM3". See details.
+#' @param model A \code{character} indicating which model to use to estimate
+#'  the mosaicism. Valid choices are "AUTO", "BB", "MM", "MM2", "MM3". See details.
 #' @param plot A \code{logical}. If set to TRUE, information about the training
 #'  set and the skewing estimate will be plotted.
 #' @param hist A \code{logical}. If set to TRUE, an histogram of the skewing
@@ -19,8 +19,8 @@
 #'  skewing for inactivated genes.
 #'
 #' @details
-#' The method determines the number of components used in the mixture model. By
-#' default, "all" tries all combinations of mixtures and the best estimate is
+#' The model determines the number of components used in the mixture model. By
+#' default, "AUTO" tries all combinations of mixtures and the best estimate is
 #' kept using backward selection based on AIC.
 #' BB is a simple beta-binomial. MM adds a binomial component to model the
 #' sequencing errors. MM2 jointly models the probability of misclasification
@@ -28,7 +28,7 @@
 #'
 #' @seealso getGenicDP readXCI
 #' @export
-betaBinomXI <- function(genic_dt,  method = "all", plot = FALSE, hist = FALSE,
+betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
                         graph_summary = FALSE, xciGenes = NULL, limits = FALSE){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
@@ -50,16 +50,17 @@ betaBinomXI <- function(genic_dt,  method = "all", plot = FALSE, hist = FALSE,
     balanced <- samples
   #}
 
-  if(method == "BB"){
-    dt <- BB(dt_xci, dt, balanced)
-  } else if(method == "MM"){
+  model <- toupper(model)
+  if(model == "BB"){
+    dt <- BB(dt_xci, dt, balanced, limits)
+  } else if(model == "MM"){
     dt <- MM(dt_xci, dt, balanced, limits)
-  } else if(method == "MM2"){
+  } else if(model == "MM2"){
     dt <- MM2(dt_xci, dt, balanced, limits)
-  } else if(method == "MM3"){
+  } else if(model == "MM3"){
     dt <- MM3(dt_xci, dt, balanced, limits)
-  } else if(method == "all"){
-    bb <- BB(dt_xci, dt, balanced)
+  } else if(model == "AUTO"){
+    bb <- BB(dt_xci, dt, balanced, limits)
     setnames(bb, "AIC", "AIC_bb")
     mm <- MM(dt_xci, dt, balanced, limits)
     setnames(mm, "AIC", "AIC_mm")
@@ -84,10 +85,11 @@ betaBinomXI <- function(genic_dt,  method = "all", plot = FALSE, hist = FALSE,
     setnames(dt_mm3, "AIC_mm3", "AIC")
     cols <- c("sample", "gender", "CHROM", "POS", "ANNO", "GENE", "AD_hap1",
               "AD_hap2", "tot", "n_snps", "Ntrain", "dp1", "a_est", "b_est",  "k", "logL", "AIC", "model")
+    cols <- Reduce(intersect, list(names(dt_bb), names(dt_mm), names(dt_mm2), names(dt_mm3)))
     dt <- rbindlist(list(dt_bb[, cols, with = FALSE], dt_mm[, cols, with = FALSE],
                          dt_mm2[, cols, with = FALSE], dt_mm3[, cols, with = FALSE]))
   } else{
-    stop("Invalid method selected")
+    stop("Invalid model selected")
   }
 
   dt[, f := a_est/(a_est + b_est)]
@@ -173,14 +175,19 @@ pbb <- function(x, n, a, b, type = "midp"){ #p-value for exact inference
 ################################################################################
 # Beta-binomial model:
 
-BB <- function(dt_xci, full_dt, balanced){
+BB <- function(dt_xci, full_dt, balanced, limits = F){
   dt <- copy(full_dt)
   for(sample_i in balanced){
     a0  <- c(1,1);
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
-    res_optim <- nlminb(a0, .logL_BB, dp1 = dp1, dp = dp)
+    if(limits){
+      res_optim <- nlminb(a0, .logL_BB, dp1 = dp1, dp = dp,
+                          lower = c(0, 0), upper = c(Inf, Inf))
+    } else{
+      res_optim <- nlminb(a0, .logL_BB, dp1 = dp1, dp = dp)
+    }
     dt[sample == sample_i, a_est := exp(res_optim$par[1])]
     dt[sample == sample_i, b_est := exp(res_optim$par[2])]
     dt[sample == sample_i, k := length(res_optim$par)]
@@ -210,7 +217,8 @@ MM <- function(dt_xci, full_dt, balanced, limits = F){
     Nxcig <- dt_xci[sample == sample_i, .N]
     if(limits){
       res_optim <- nlminb(a0, .logL_MM, dp1 = dp1, dp = dp,
-                          lower = c(-Inf, -Inf, 0, -Inf),
+                          lower = c(0, 0, 0, -Inf),
+                          #lower = c(-Inf, -Inf, 0, -Inf),
                           upper = c(Inf, Inf, Inf, log(0.3/0.7)))
     } else{
       res_optim <- nlminb(a0, .logL_MM, dp1 = dp1, dp = dp)
@@ -228,15 +236,12 @@ MM <- function(dt_xci, full_dt, balanced, limits = F){
 }
 
 .logL_MM <- function(a, dp1, dp) {
-  #print(paste("a:", paste(a, collapse = ";")))
   a1 <- exp(a[1]);
   b1 <- exp(a[2]);
   # Proportions have to be kept as an exponent ratio to avoid issues with boundaries
   p_het <- exp(a[3])/(1+exp(a[3])); # Proba that the SNP is indeed bi-allelic (initial proba = .98)
   pi_err <- 0.001+0.999*exp(a[4])/(1+exp(a[4])); # (initial proba = .02)
-  #pbb <- dbb(dp1, dp, a1, b1)
   pb <- dbinom(dp1, dp, pi_err)
-  #p_tot <- p_het * pbb + (1-p_het) * pb
 
   # Operations on the log scale to avoid infinite values
   lpbb <- ldbb(dp1, dp, a1, b1)
@@ -260,12 +265,21 @@ MM2 <- function(dt_xci, full_dt, balanced, limits = F){
     Nxcig <- dt_xci[sample == sample_i, .N]
     if(limits){
       res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp,
-                          lower = c(-Inf, -Inf, -Inf, -Inf, 0), # 0 mins min(p_inac) > .5
+                          lower = c(0, 0, -Inf, -Inf, 0), # 0 mins min(p_inac) > .5
+                          #lower = c(-Inf, -Inf, -Inf, -Inf, 0), # 0 mins min(p_inac) > .5
                           upper = c(Inf, Inf, Inf, Inf, Inf))
     } else{
       res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp)
     }
-    p_inac_i <- exp(res_optim$par[5])/(1 + exp(res_optim$par[5]))
+    #p_inac_i <- exp(res_optim$par[5])/(1 + exp(res_optim$par[5]))
+    expar5 <- exp(res_optim$par[5])
+    if(is.finite(expar5)){
+      p_inac_i <- expar5/(1 + expar5)
+    } else if(expar5 == Inf){
+      p_inac_i <- 1
+    } else{
+      stop("Something went wrong with the estimation of the inactivated mixture proportion")
+    }
     # Selecting the right component to get alpha/beta corresponding to the inactivated group
     if(p_inac_i >= .5){ # We assume that the list should always have a majority of inactivated genes
       a_est_i <- exp(res_optim$par[1])
@@ -322,36 +336,59 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
-    if(limits){
-      res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp,
-                          lower = c(-Inf, -Inf, -Inf, -Inf, 0, 0, -Inf),
-                          upper = c(Inf, Inf, Inf, Inf, Inf, Inf, log(0.3/0.7)))
-    } else{
-      res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp)
-    }
-    p_inac_i <- exp(res_optim$par[5])/(1 + exp(res_optim$par[5]))
-    if(p_inac_i >= .5){ # We assume that the list should always have a majority of inactivated genes
-      a_est_i <- exp(res_optim$par[1])
-      b_est_i <- exp(res_optim$par[2])
-      a_est_e <- exp(res_optim$par[3])
-      b_est_e <- exp(res_optim$par[4])
-    } else{
-      p_inac_i <- 1-p_inac_i
-      a_est_i <- exp(res_optim$par[3])
-      b_est_i <- exp(res_optim$par[4])
-      a_est_e <- exp(res_optim$par[1])
-      b_est_e <- exp(res_optim$par[2])
-    }
-    dt[sample == sample_i, a_est := a_est_i]
-    dt[sample == sample_i, b_est := b_est_i]
-    dt[sample == sample_i, p_inac := p_inac_i]
-    dt[sample == sample_i, p_het := exp(res_optim$par[6])/(1+exp(res_optim$par[6]))]
+    err <- try({
+      if(limits){
+        res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp,
+                            lower = c(0, 0, -Inf, -Inf, 0, 0, -Inf),
+                            #lower = c(-Inf, -Inf, -Inf, -Inf, 0, 0, -Inf),
+                            upper = c(Inf, Inf, Inf, Inf, Inf, Inf, log(0.3/0.7)))
+      } else{
+        res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp)
+      }
+      expar5 <- exp(res_optim$par[5])
+      if(is.finite(expar5)){
+        p_inac_i <- expar5/(1 + expar5)
+      } else if(expar5 == Inf){
+        p_inac_i <- 1
+      } else{
+        stop("Something went wrong with the estimation of the inactivated mixture")
+      }
+      if(p_inac_i >= .5){ # We assume that the list should always have a majority of inactivated genes
+        a_est_i <- exp(res_optim$par[1])
+        b_est_i <- exp(res_optim$par[2])
+        a_est_e <- exp(res_optim$par[3])
+        b_est_e <- exp(res_optim$par[4])
+      } else{
+        p_inac_i <- 1-p_inac_i
+        a_est_i <- exp(res_optim$par[3])
+        b_est_i <- exp(res_optim$par[4])
+        a_est_e <- exp(res_optim$par[1])
+        b_est_e <- exp(res_optim$par[2])
+      }
+    })
+    if(inherits(err, "try-error")){
+      dt[sample == sample_i, a_est := NA]
+      dt[sample == sample_i, b_est := NA]
+      dt[sample == sample_i, p_inac := NA]
+      dt[sample == sample_i, p_het := NA]
 
-    dt[sample == sample_i, pi_escape := a_est_e/(a_est_e + b_est_e)]
-    dt[sample == sample_i, k := length(res_optim$par)]
-    dt[sample == sample_i, logL := res_optim$objective] #Actually -logL
-    dt[sample == sample_i, AIC := 2*k + 2*logL]
-    dt[sample == sample_i, Ntrain := Nxcig]
+      dt[sample == sample_i, pi_escape := NA]
+      dt[sample == sample_i, k := NA]
+      dt[sample == sample_i, logL := NA] #Actually -logL
+      dt[sample == sample_i, AIC := NA]
+      dt[sample == sample_i, Ntrain := Nxcig]
+    } else{
+      dt[sample == sample_i, a_est := a_est_i]
+      dt[sample == sample_i, b_est := b_est_i]
+      dt[sample == sample_i, p_inac := p_inac_i]
+      dt[sample == sample_i, p_het := exp(res_optim$par[6])/(1+exp(res_optim$par[6]))]
+
+      dt[sample == sample_i, pi_escape := a_est_e/(a_est_e + b_est_e)]
+      dt[sample == sample_i, k := length(res_optim$par)]
+      dt[sample == sample_i, logL := res_optim$objective] #Actually -logL
+      dt[sample == sample_i, AIC := 2*k + 2*logL]
+      dt[sample == sample_i, Ntrain := Nxcig]
+    }
   }
   return(dt)
 }
@@ -365,16 +402,28 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
   ae <- exp(a[3])
   be <- exp(a[4])
 
-  p_inac <- exp(a[5])/(1+exp(a[5])) #Proba that the team is indeed inactivated
-  p_het <- exp(a[6])/(1+exp(a[6]))
+  if(is.finite(exp(a[5]))){
+    p_inac <- exp(a[5])/(1+exp(a[5])) #Proba that the gene is not a training set error
+  } else if(exp(a[5]) == Inf){
+    p_inac <- 1 #Tends to 1
+  } else{
+    stop("Something is wrong with the a[5]")
+  }
+  if(is.finite(exp(a[6]))){
+    p_het <- exp(a[6])/(1+exp(a[6])) #Proba that the gene is indeed heterozygous
+  } else if(exp(a[6]) == Inf){
+    p_het <- 1 #Tends to 1
+  } else{
+    stop("Something is wrong with the a[6]")
+  }
+
   pi_err  <- .01 + .99*exp(a[7])/(1+exp(a[7]))
 
   lpbb_i <- ldbb(dp1, dp, ai, bi)
   lpbb_e <- ldbb(dp1, dp, ae, be)
   pb_err <- dbinom(dp1, dp, pi_err)
-  #p_tot <- p_het * (p_inac * pbb_i + # Reads from component1
-  #                 (1-p_inac) * pbb_e) + # Reads from component2
-  #         (1-p_het) * pb_err # Reads from sequencing error
+  ## TODO: Handle cases where exp lpbb_i/lpbb_e > 0
+  ## lpbb should be between 0 and 1
   p_tot <- p_het * (p_inac * exp(lpbb_i) + # Reads from component1
                    (1-p_inac) * exp(lpbb_e)) + # Reads from component2
            (1-p_het) * pb_err # Reads from sequencing error
@@ -389,7 +438,8 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
   aics <- merge(aics, unique(mm3[, list(sample, AIC_mm3)]), by = "sample")
   aics <- merge(aics, unique(bb[, list(sample, AIC_bb)]), by = "sample")
   # Backward selection: 1. Select min AIC of top 3 models. 2. If min is not full model, try min against BB
-  aics[, `:=`(c("model", "value"), list(colnames(.SD)[which.min(.SD)], min(.SD))),
+  # TODO: AIC does not require the models to be nested. Simplify this.
+  aics[, `:=`(c("model", "value"), list(colnames(.SD)[which.min(.SD)], min(.SD, na.rm = T))),
        by = "sample", .SDcols = c("AIC_mm3", "AIC_mm2", "AIC_mm")]
   aics[model != "AIC_mm3", model := ifelse(value < AIC_bb, model, "AIC_bb")]
   aics[model != "AIC_mm3", value := ifelse(value < AIC_bb, value, AIC_bb)]
@@ -424,10 +474,10 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
 #'
 #' @importFrom ggplot2 element_blank scale_colour_manual
 #' @export
-plotBBCellFrac <- function(xci_dt, xcig = T, gene_names = ""){
+plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
   plotfrac <- xci_dt[order(sample)]
-  if(xcig){
-    xcig <- readXCI()
+  if(!is.null(xcig)){
+    xcig <- readXCI(xcig)
     plotfrac <- plotfrac[GENE %in% xcig]
   }
   Nt <- plotfrac[, .N, by = "sample"]

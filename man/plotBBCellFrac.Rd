@@ -4,7 +4,7 @@
 \alias{plotBBCellFrac}
 \title{Plot cell fraction estimates}
 \usage{
-plotBBCellFrac(xci_dt, xcig = T, gene_names = "")
+plotBBCellFrac(xci_dt, xcig = NULL, gene_names = "")
 }
 \arguments{
 \item{xci_dt}{A \code{data.table}. The data to be used for the estimate
