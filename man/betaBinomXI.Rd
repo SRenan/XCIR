@@ -5,7 +5,7 @@
 \title{Fit mixture model}
 \usage{
 betaBinomXI(genic_dt, model = "AUTO", plot = FALSE, hist = FALSE,
-  graph_summary = FALSE, xciGenes = NULL, limits = FALSE)
+  flag = FALSE, xciGenes = NULL, limits = TRUE)
 }
 \arguments{
 \item{genic_dt}{A \code{data.table}. The table as outputted by \code{getGenicDP}.}
@@ -18,9 +18,6 @@ set and the skewing estimate will be plotted.}
 
 \item{hist}{A \code{logical}. If set to TRUE, an histogram of the skewing
 estimates will be displayed.}
-
-\item{graph_summary}{A \code{logical}. Unused. Will include better summary of
-the fit.}
 
 \item{xciGenes}{A \code{character} or NULL. To be passed to \code{readXCI} to
 select the training set of inactivated genes.}
