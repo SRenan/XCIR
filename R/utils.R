@@ -107,3 +107,14 @@ GOI <- function(){
 
   return(goi)
 }
+
+sample_clean <- function(bb_table){
+  clean_cols <- c("sample", "model", "f")
+  ret <- unique(bb_table[, clean_cols, with = F])
+  return(ret)
+}
+xcir_clean <- function(bb_table){
+  clean_cols <- c("sample", "GENE", "AD_hap1", "AD_hap2", "f", "p_value", "pbb")
+  ret <- unique(bb_table[, clean_cols, with = F])
+  return(ret)
+}
