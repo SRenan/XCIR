@@ -3,8 +3,4 @@ chromosome inactivation (XCI) and XCI-escape.
 
 # Pipeline
 ```
-readXVcf()
-addAnno()
-getGenicDP()
-betaBinomXI()
 ```

@@ -41,55 +41,48 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
     warning("No known silenced gene found in data.")
   }
 
-  samples <- unique(dt_xci$sample)
-  #if(singlecell){ # because the 100%skewed are used as truth
-  #  balanced <- samples[!samples %in% getSkewedSamples(dt)]
-  #} else{
-    balanced <- samples
-  #}
+  ## TODO: This does not really need to be passed and could be handled at the subfunction level
+  balanced <- unique(dt_xci$sample)
 
-  model <- toupper(model)
-  if(model == "BB"){
-    dt <- BB(dt_xci, dt, balanced, limits)
-  } else if(model == "MM"){
-    dt <- MM(dt_xci, dt, balanced, limits)
-  } else if(model == "MM2"){
-    dt <- MM2(dt_xci, dt, balanced, limits)
-  } else if(model == "MM3"){
-    dt <- MM3(dt_xci, dt, balanced, limits)
-  } else if(model == "AUTO"){
-    bb <- BB(dt_xci, dt, balanced, limits)
-    mm <- MM(dt_xci, dt, balanced, limits)
-    mm2 <- MM2(dt_xci, dt, balanced, limits)
-    mm3 <- MM3(dt_xci, dt, balanced, limits)
-    #setnames(bb, "AIC", "AIC_bb")
-    #setnames(mm, "AIC", "AIC_mm")
-    #setnames(mm2, "AIC", "AIC_mm2")
-    #setnames(mm3, "AIC", "AIC_mm3")
-
-    aics <- .back_sel(bb, mm, mm2, mm3, flag = flag)
-    dt <- aics
-
-    #dt_bb <- bb[sample %in% aics[model == "AIC_bb", sample]]
-    #dt_mm <- mm[sample %in% aics[model == "AIC_mm", sample]]
-    #dt_mm2 <- mm2[sample %in% aics[model == "AIC_mm2", sample]]
-    #dt_mm3 <- mm3[sample %in% aics[model == "AIC_mm3", sample]]
-    #dt_bb[, model := "BB"]
-    #dt_mm[, model := "MM"]
-    #dt_mm2[, model := "MM2"]
-    #dt_mm3[, model := "MM3"]
-    #setnames(dt_bb, "AIC_bb", "AIC")
-    #setnames(dt_mm, "AIC_mm", "AIC")
-    #setnames(dt_mm2, "AIC_mm2", "AIC")
-    #setnames(dt_mm3, "AIC_mm3", "AIC")
-    #cols <- c("sample", "gender", "CHROM", "POS", "ANNO", "GENE", "AD_hap1",
-    #          "AD_hap2", "tot", "n_snps", "Ntrain", "dp1", "a_est", "b_est",  "k", "logL", "AIC", "model")
-    #cols <- Reduce(intersect, list(names(dt_bb), names(dt_mm), names(dt_mm2), names(dt_mm3)))
-    #dt <- rbindlist(list(dt_bb[, cols, with = FALSE], dt_mm[, cols, with = FALSE],
-    #                     dt_mm2[, cols, with = FALSE], dt_mm3[, cols, with = FALSE]))
-  } else{
-    stop("Invalid model selected")
+  model <- .check_model(model)
+  modl <- vector("list", length(model))
+  for(i in seq_along(modl)){
+    modi <- model[i]
+    if(modi == "BB"){
+      dt <- BB(dt_xci, dt, balanced, limits)
+    } else if(modi == "MM"){
+      dt <- MM(dt_xci, dt, balanced, limits)
+    } else if(modi == "MM2"){
+      dt <- MM2(dt_xci, dt, balanced, limits)
+    } else if(modi == "MM3"){
+      dt <- MM3(dt_xci, dt, balanced, limits)
+    }
+    modl[[i]] <- dt
   }
+  if(length(modl) > 1){
+    dt <- .back_sel(modl, flag = flag)
+  } else{
+    dt <- unlist(modl)
+  }
+  #if(model == "BB"){
+  #  dt <- BB(dt_xci, dt, balanced, limits)
+  #} else if(model == "MM"){
+  #  dt <- MM(dt_xci, dt, balanced, limits)
+  #} else if(model == "MM2"){
+  #  dt <- MM2(dt_xci, dt, balanced, limits)
+  #} else if(model == "MM3"){
+  #  dt <- MM3(dt_xci, dt, balanced, limits)
+  #} else if(model == "AUTO"){
+  #  bb <- BB(dt_xci, dt, balanced, limits)
+  #  mm <- MM(dt_xci, dt, balanced, limits)
+  #  mm2 <- MM2(dt_xci, dt, balanced, limits)
+  #  mm3 <- MM3(dt_xci, dt, balanced, limits)
+
+  #  aics <- .back_sel(bb, mm, mm2, mm3, flag = flag)
+  #  dt <- aics
+  #} else{
+  #  stop("Invalid model selected")
+  #}
 
   dt[, f := a_est/(a_est + b_est)]
   dt[, fg := dp1/tot]
@@ -115,6 +108,20 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
     plotBBCellFrac(xci_dt = dt[GENE %in% xcig])
   }
   return(dt[])
+}
+
+.check_model <- function(model){
+  model <- unique(toupper(model))
+  validmodels <- c("BB", "MM", "MM2", "MM3")
+  if("AUTO" %in% model){
+    model <- validmodels
+  }
+  if(any(!model %in% validmodels)){
+     err <- paste("Invalid models:", paste(model[!model %in% validmodels], collapse=", "),
+                  "should be one of", paste(validmodels, collapse=", "))
+     stop(err)
+  }
+  return(model)
 }
 
 ################################################################################
@@ -495,7 +502,7 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
   return(aics)
 }
 
-.back_sel <- function(bb, mm, mm2, mm3, flag = 0){
+.back_sel1 <- function(bb, mm, mm2, mm3, flag = 0){
   cols <- Reduce(intersect, list(names(bb), names(mm), names(mm2), names(mm3)))
   aics <- rbindlist(list(bb[, cols, with = F], mm[, cols, with = F],
                          mm2[, cols, with = F], mm3[, cols, with = F]))
@@ -509,6 +516,19 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
   return(aics)
 }
 
+.back_sel <- function(modl, flag = 0){
+  cols <- Reduce(intersect, lapply(modl, names))
+  modl <- lapply(modl, function(XX){XX[, cols, with = F]})
+  aics <- rbindlist(modl)
+  if(flag == 1){# Models where the sample had errors are discarded
+    aics <- aics[!grep("^MM", flag)]
+  }
+  aics <- aics[aics[, .I[which.min(AIC)], by = "sample,GENE"]$V1] #Model that minimizes AIC
+  if(flag == 2){# Remove samples where the selected model had errors
+    aics <- aics[!grep("^MM", flag)]
+  }
+  return(aics)
+}
 ################################################################################
 
 # Can also be used to visualize the cell frac from the calls
