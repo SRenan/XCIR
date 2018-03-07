@@ -248,3 +248,21 @@ print_cmh <- function(cmh_list, alpha = .05){
   return(NULL)
 }
 
+#' Summarize escape frequency
+#'
+#'
+#' @param table A \code{data.table}. The output of \code{betaBinomXI}.
+#' @param fmax A \code{numeric}. The maximum skew (takes values between 0 and
+#' 0.5, 0.5 corresponds to balanced samples).
+#' @param alpha A \code{numeric}. The significance level of escape calls.
+#'
+#' @export
+summescape <- function(table, fmax = 0.5, alpha = 0.05){
+  summ <- copy(table[f <= fmax])
+  summ[, status := ifelse(p_value < alpha, "E", "S")]
+  summ <- setkey(summ, GENE, status)[CJ(GENE, status, unique = T), .N, by = .EACHI]
+  summ <- dcast.data.table(summ, GENE ~ status, value.var = "N")
+  summ[, N := E+S]
+  summ[, esc := E/N]
+  return(summ[])
+}

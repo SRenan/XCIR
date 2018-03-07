@@ -5,7 +5,7 @@
 \title{Fit mixture model}
 \usage{
 betaBinomXI(genic_dt, model = "AUTO", plot = FALSE, hist = FALSE,
-  flag = FALSE, xciGenes = NULL, limits = TRUE)
+  flag = 0, xciGenes = NULL, limits = TRUE)
 }
 \arguments{
 \item{genic_dt}{A \code{data.table}. The table as outputted by \code{getGenicDP}.}
