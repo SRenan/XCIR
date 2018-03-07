@@ -9,6 +9,8 @@
 #'  set and the skewing estimate will be plotted.
 #' @param hist A \code{logical}. If set to TRUE, an histogram of the skewing
 #'  estimates will be displayed.
+#' @param flag A \code{numeric}. Specify how to handle convergence issues. See
+#'  details.
 #' @param xciGenes A \code{character} or NULL. To be passed to \code{readXCI} to
 #'  select the training set of inactivated genes.
 #' @param limits A \code{logical}. If set to TRUE, the optimization will be
@@ -23,6 +25,11 @@
 #' BB is a simple beta-binomial. MM adds a binomial component to model the
 #' sequencing errors. MM2 jointly models the probability of misclasification
 #' in the training set. MM3 include all 3 components.
+#'
+#' Flags in the output reports issues in convergence. If \code{flag} is set to 0,
+#' nothing is done. If set to 1, the model selection will avoid flagged models.
+#' If set to 2, calls for which the best selected model had convergence issue
+#' will be removed.
 #'
 #' @seealso getGenicDP readXCI
 #' @export
@@ -62,7 +69,7 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
   if(length(modl) > 1){
     dt <- .back_sel(modl, flag = flag)
   } else{
-    dt <- unlist(modl)
+    dt <- modl[[1]]
   }
   #if(model == "BB"){
   #  dt <- BB(dt_xci, dt, balanced, limits)
@@ -551,7 +558,8 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
 #' fraction is estimated properly. However, it can be used from the output
 #' of \code{betaBinomXI} to troubleshoot estimation issues.
 #'
-#' @importFrom ggplot2 element_blank scale_colour_manual
+#' @importFrom ggplot2 element_blank scale_colour_manual facet_wrap
+#' @importFrom ggplot2 geom_point geom_hline
 #' @export
 plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
   plotfrac <- xci_dt[order(sample)]
@@ -584,7 +592,7 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
   p <- p + geom_text(aes(x = N - 5, y= max(fg) + .01, label = paste("N =", N)))
   p <- p + facet_wrap(~sample, scales = "free_x")
   print(p)
-  return(NULL)
+  return(invisible(p))
 }
 
 #

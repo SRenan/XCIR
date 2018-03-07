@@ -1,0 +1,61 @@
+---
+title: "Introduction to XCIR"
+author: "Renan Sauteraud"
+date: "3/7/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE, message = F)
+```
+
+```{r}
+library(XCIR)
+library(data.table)
+```
+
+
+First, we load a simulated example data inlcuded with the package. Read counts
+for allele specific expression (ASE) at heterozygous SNP and skewing based
+on pre-determined mode and overdispersion parameters are simulated.
+```{r}
+data <- fread(system.file("extdata/data2_vignette.tsv", package = "XCIR"))
+xcig <- readLines(system.file("extdata/xcig_vignette.txt", package = "XCIR"))
+```
+
+## Skewing estimates & XCI-escape inference
+
+The main function of the package `betaBinomXI` allows to fit a simple beta-binomial
+distribution to the expression of genes in the training set.
+```{r}
+bb <- betaBinomXI(data, xciGenes = xcig, model = "BB")
+```
+This will estimate the skewing for each individual as well as test for
+XCI-escape for each gene in each sample.
+
+
+## Models
+
+In this example, the training set contains artificial sequencing errors in some of the samples, 
+such that a simple beta-binomial may not be the best choice to fit the training data.
+
+The `plotBBCellFrac` function plots the estimated skewing along with the observed
+allele specific expression fraction in the training genes. 
+
+It can be used to spot outliers (such as sequencing errors or escape genes in
+the training set) to use a better fitting model.
+```{r}
+plotBBCellFrac(bb[sample == "sample36"], xcig = xcig)
+s36 <- data[sample == "sample36"]
+```
+
+Here, we let the AIC based model selection procedure select the best fitting
+model.
+```{r}
+s36fit <- betaBinomXI(s36, model = "AUTO", xciGenes = xcig, plot = T)
+```
+
+The software selected the "MM" model, which is a mixture model with a Beta-binomial
+component for the true heterozygous SNPs and a binomial mixture to fit the 
+sequencing errors.
