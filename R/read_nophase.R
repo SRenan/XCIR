@@ -10,6 +10,7 @@
 #' @details
 #' For phased samples, use \code{readXVcf}.
 #'
+#' @importFrom S4Vectors unstrsplit
 #' @export
 readRNASNPs <- function(vcf_file){
   vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("AD"))
@@ -33,9 +34,12 @@ readRNASNPs <- function(vcf_file){
   samples <- colnames(dt)[!colnames(dt) %in% c("POS", "CHROM", "ID", "REF", "ALT") ]
   mdt <- melt(dt, measure.vars = samples, variable.name = "sample", value.name = "AD")
   mdt[, ID := NULL]
-  mdt[, `:=`(c("AD_hap1", "AD_hap2"), tstrsplit(AD, split = ","))] #It doesn't actually matter which is REF and ALT
-  mdt[, AD_hap1 := as.numeric(AD_hap1)]
-  mdt[, AD_hap2 := as.numeric(AD_hap2)]
+  mdt[, POS := as.numeric(POS)]
+  #mdt[, `:=`(c("AD_hap1", "AD_hap2"), tstrsplit(AD, split = ","))] #It doesn't actually matter which is REF and ALT
+  #mdt[, AD_hap1 := as.numeric(AD_hap1)]
+  #mdt[, AD_hap2 := as.numeric(AD_hap2)]
+  mdt[, AD_hap1 := as.numeric(sapply(AD, "[[", 1))]
+  mdt[, AD_hap2 := as.numeric(sapply(AD, "[[", 2))]
   return(mdt)
 }
 
@@ -54,5 +58,69 @@ readPhenotypes <- function(vcf_file){
   mg <- mg[!value %in% c("0", "1")] # Another way of encoding homozygous SNPs
 }
 
+#' @export
+readVCF4 <- function(vcf_file, merge_alts = F){
+  vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("AD"))
+  vcf <- readVcf(vcf_file, genome = "chrX", param = vcf_param)
+  alts <- as.character(unstrsplit(alt(vcf)))
+  refs <- as.character(ref(vcf))
+  # Remove monomorphic and indels
+  keep <- which(nchar(gsub("<\\*>", "", alts)) == 1 & nchar(refs) == 1)
+  nomono <- vcf[keep]
+
+  # Make a table with genotypes and counts
+  geno <- geno(nomono)
+  AD <- geno$AD
+  sampleNames <-  gsub("\\..*", "", basename(colnames(AD)))
+  rn <- rownames(AD)
+  chr <- gsub(":.*", "", rn)
+  pos <- as.numeric(gsub("_.*", "", gsub("^.*:", "", rn)))
+  ret <- data.table(CHROM = chr, POS = pos, REF = refs[keep], ALT = alts[keep])
+
+  # Check for alternate alleles formats
+  alt2 <- unique(substr(alts[keep], 2, 4))
+  alt2 <- alt2[alt2 != ""]
+  if(length(alt2) > 0){ #Are there multiple alternate
+    if(alt2 != "<*>"){  #If so, is it just structural variants
+      err <- "There are more than one secondary alternate allele or it is not a deletion '<*>'"
+      stop(err)
+    }
+  }
+  #if(!(length(alt2) == 1 & alt2 == "<*>")){
+  #  err <- "There are more than one secondary alternate allele or it is not a deletion '<*>'"
+  #  stop(err)
+  #}
+
+  nref <- sapply(AD, "[[", 1)
+  nalt1 <- sapply(AD, "[[", 2)
+
+  # REF
+  refDT <- data.table(matrix(nref, ncol = ncol(AD)))
+  setnames(refDT, sampleNames)
+  refDT[, `:=`(c("CHROM", "POS"), list(chr, pos))]
+  mref <- melt(refDT, id.vars = c("CHROM", "POS"), value.name = "AD_hap1", variable.name = "sample")
+
+  # ALT (Consider only the first ALT)
+  altDT <- data.table(matrix(nalt1, ncol = ncol(AD)))
+  setnames(altDT, sampleNames)
+  altDT[, `:=`(c("CHROM", "POS"), list(chr, pos))]
+  malt <- melt(altDT, id.vars = c("CHROM", "POS"), value.name = "AD_hap2", variable.name = "sample")
+
+  counts <- merge(mref, malt, by = c("CHROM", "POS", "sample"))
+  ret <- merge(ret, counts, by = c("CHROM", "POS"))[order(CHROM, POS)]
+  return(ret)
+}
 
 
+# New functions for samtools v4.3
+.makeDTFromGeno <- function(geno){
+  sampleNames <-  gsub("\\..*", "", basename(colnames(geno)))
+  rn <- rownames(geno)
+  chr <- gsub(":.*", "", rn)
+  pos <- gsub("_.*", "", gsub("^.*:", "", rn))
+  dt <- data.table(geno)
+  setnames(dt, sampleNames)
+  dt[, CHROM := chr]
+  dt[, POS := pos]
+  return(dt)
+}

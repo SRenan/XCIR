@@ -27,7 +27,8 @@
 #' in the training set. MM3 include all 3 components.
 #'
 #' Flags in the output reports issues in convergence. If \code{flag} is set to 0,
-#' nothing is done. If set to 1, the model selection will avoid flagged models.
+#' nothing is done. If set to 1, the model selection will avoid flagged models
+#' (will favor parcimonious models).
 #' If set to 2, calls for which the best selected model had convergence issue
 #' will be removed.
 #'
@@ -209,6 +210,7 @@ BB <- function(dt_xci, full_dt, balanced, limits = F){
     dt[sample == sample_i, flag := res_optim$message]
     dt[sample == sample_i, AIC := 2*k + 2*logL]
     dt[sample == sample_i, Ntrain := Nxcig]
+    dt[sample == sample_i, BIC := log(Ntrain)*k + 2*logL]
   }
   return(dt)
 }
@@ -492,38 +494,7 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
 }
 ################################################################################
 # Model selection
-.back_sel0 <- function(bb, mm, mm2, mm3, flag = 0, plot = FALSE){
-  aics <- merge(unique(mm[, list(sample, AIC_mm)]), unique(mm2[, list(sample, AIC_mm2)]), by = "sample")
-  aics <- merge(aics, unique(mm3[, list(sample, AIC_mm3)]), by = "sample")
-  aics <- merge(aics, unique(bb[, list(sample, AIC_bb)]), by = "sample")
-  # Backward selection: 1. Select min AIC of top 3 models. 2. If min is not full model, try min against BB
-  # TODO: AIC does not require the models to be nested. Simplify this.
-  aics[, `:=`(c("model", "value"), list(colnames(.SD)[which.min(.SD)], min(.SD, na.rm = T))),
-       by = "sample", .SDcols = c("AIC_mm3", "AIC_mm2", "AIC_mm")]
-  aics[model != "AIC_mm3", model := ifelse(value < AIC_bb, model, "AIC_bb")]
-  aics[model != "AIC_mm3", value := ifelse(value < AIC_bb, value, AIC_bb)]
-  if(plot){
-    p <- ggplot(aics[is.finite(value)]) + geom_bar(aes(x = model), stat = "count") + xlab("Model") + ylab("Number of samples") + ggtitle("Model selection using AIC")
-    print(p)
-  }
-  return(aics)
-}
-
-.back_sel1 <- function(bb, mm, mm2, mm3, flag = 0){
-  cols <- Reduce(intersect, list(names(bb), names(mm), names(mm2), names(mm3)))
-  aics <- rbindlist(list(bb[, cols, with = F], mm[, cols, with = F],
-                         mm2[, cols, with = F], mm3[, cols, with = F]))
-  if(flag == 1){
-    aics <- aics[!grep("^MM", flag)]
-  }
-  aics <- aics[aics[, .I[which.min(AIC)], by = "sample,GENE"]$V1]
-  if(flag == 2){# Remove samples where the selected model has errors
-    aics <- aics[!grep("^MM", flag)]
-  }
-  return(aics)
-}
-
-.back_sel <- function(modl, flag = 0){
+.back_sel <- function(modl, criterion = "AIC", flag = 0){
   cols <- Reduce(intersect, lapply(modl, names))
   modl <- lapply(modl, function(XX){XX[, cols, with = F]})
   aics <- rbindlist(modl)
@@ -550,6 +521,8 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
 #' @param gene_names A \code{character}. If left blank, only genes that are
 #' further than 20% away from the estimated skewing will be annotated, if set
 #' to "all", all genes will be named. Set to "none" to remove all annotations.
+#' Alternately, a \code{character} vector can be passed to annotate specific
+#' genes of interest.
 #'
 #' @return NULL
 #'
@@ -559,7 +532,7 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
 #' of \code{betaBinomXI} to troubleshoot estimation issues.
 #'
 #' @importFrom ggplot2 element_blank scale_colour_manual facet_wrap
-#' @importFrom ggplot2 geom_point geom_hline
+#' @importFrom ggplot2 geom_point geom_hline theme_bw
 #' @export
 plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
   plotfrac <- xci_dt[order(sample)]
@@ -571,12 +544,16 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
   plotfrac <- merge(plotfrac, Nt, by = "sample")
   plotfrac[, index := unlist(sapply(Nt[, N], function(x){1:x}))]
   plotfrac[, label := ""]
-  if(gene_names == "all"){
+  if(length(gene_names) > 1){
+    plotfrac[GENE %in% gene_names, label := GENE]
+  } else if(gene_names == "all"){
     plotfrac[, label := GENE]
   } else if(gene_names == "none"){
     plotfrac[, label := ""]
-  } else{
+  } else if(gene_names == ""){
     plotfrac[abs(fg - f) > .2, label := GENE]
+  } else{
+    plotfrac[GENE %in% gene_names, label := GENE]
   }
   if("model" %in% colnames(plotfrac)){
     gp <- geom_point(aes(shape = model))
@@ -589,55 +566,13 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
 
   p <- p + geom_hline(aes(yintercept = f))
   p <- p + gp + geom_text(aes(label = label))
-  p <- p + geom_text(aes(x = N - 5, y= max(fg) + .01, label = paste("N =", N)))
+  #p <- p + geom_text(aes(x = N - 5, y= max(fg) + .01, label = paste("N =", N)))
+  p <- p + geom_text(aes(x = 0, y= max(fg) + .01, label = paste("N =", N)), hjust = "left")
   p <- p + facet_wrap(~sample, scales = "free_x")
+  p <- p + theme_bw() + theme(axis.text.x = element_blank(),
+                              axis.ticks.x = element_blank(),
+                              axis.title.x = element_blank())
   print(p)
   return(invisible(p))
 }
 
-#
-#  if("pi_escape" %in% colnames(plotfrac)){
-#
-#    ggplot(plotfrac, aes(x = index, y = fg)) +
-#    geom_rect(aes(xmax = Ntrain+1, ymax = (1-p_het)*.5), xmin = 0, ymin = 0, fill = "lightblue") +
-#    geom_rect(aes(xmax = Ntrain+1, ymin = (1-p_het)*.5 +p_het*p_inac*0.5, ymax = .5), xmin = 0, fill = "red") +
-#    gp +geom_hline(aes(yintercept = f)) + geom_hline(aes(yintercept = pi_escape)) +  geom_hline(aes(yintercept = pierr))
-#
-#
-#  p <- ggplot(plotfrac, aes(x = index, y = fg)) + gp
-#  p <- p + geom_rect(xmin = 0, xmax = Ntrain, ymin = 0, ymax = p_het, fill = "lightyellow") +
-#    geom_rect(xmin = 0, xmax = Ntrain, ymin = p_het*p_inac, ymax = 1, fill = "lightblue")
-#
-#  #p <- ggplot(plotfrac, aes(x = index, y = fg)) + gp +
-#  #  geom_hline(aes(yintercept = f, colour = "1"))
-#  #p <- p + geom_text(aes(label = label))
-#  #p <- p + geom_text(aes(x = N - 5, y= max(fg) + .01, label = paste("N =", N)))
-#  #p <- p + facet_wrap(~sample, scales = "free_x")
-#  #if("pi_escape" %in% colnames(plotfrac)){
-#  #  plotfrac[p_inac > .99, pi_escape := NA]
-#  #  p <- p + geom_hline(aes(yintercept = pi_escape, colour = "2"), na.rm = T)
-#  #  p <- p + scale_colour_manual(name = "fraction", values = c("red", "blue"), labels = c("mean", "escape mean")) +
-#  #    theme(legend.position = c(.8, 0.2))
-#  #} else if("pi_err" %in% colnames(plotfrac)){
-#  #  plotfrac[p_het > .99, pi_err := NA] #Only show sequencing error when it actually affect the estimate
-#  #  p <- p + geom_hline(aes(yintercept = pi_err, colour = "2"), na.rm = T)
-#  #  p <- p + scale_colour_manual(name = "fraction", values = c("red", "blue"), labels = c("mean", "sequencing error")) +
-#  #    theme(legend.position = c(.8, 0.2))
-#  #} else{
-#  #  #p <- p + scale_colour_manual(name = "fraction", values = c("red"), labels = c("mean")) +
-#  #  #  theme(legend.position = c(.8, 0.2))
-#  #  p <- p + scale_colour_manual(name = "fraction", values = c("red"), labels = c("mean")) +
-#  #    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
-#  #}
-#  print(p)
-#  return(NULL)
-#}
-
-  #}
-  #if(xci > 1){
-  #  xcig <- xcig[! xcig %in% c(gNrm, "SEPT6")]
-  #  xcig <- xcig[! xcig %in% c(gNrm)]
-  #}
-  #if(tolower(xci) == "j"){
-  # xcig <- jcss[statusJ == "S", GENE]
-  #}

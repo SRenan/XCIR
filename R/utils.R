@@ -108,8 +108,9 @@ GOI <- function(){
   return(goi)
 }
 
+#' @export
 sample_clean <- function(bb_table){
-  clean_cols <- c("sample", "model", "f")
+  clean_cols <- c("sample", "model", "f", "a_est", "b_est")
   ret <- unique(bb_table[, clean_cols, with = F])
   return(ret)
 }
