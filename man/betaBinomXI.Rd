@@ -19,6 +19,9 @@ set and the skewing estimate will be plotted.}
 \item{hist}{A \code{logical}. If set to TRUE, an histogram of the skewing
 estimates will be displayed.}
 
+\item{flag}{A \code{numeric}. Specify how to handle convergence issues. See
+details.}
+
 \item{xciGenes}{A \code{character} or NULL. To be passed to \code{readXCI} to
 select the training set of inactivated genes.}
 
@@ -37,6 +40,12 @@ kept using backward selection based on AIC.
 BB is a simple beta-binomial. MM adds a binomial component to model the
 sequencing errors. MM2 jointly models the probability of misclasification
 in the training set. MM3 include all 3 components.
+
+Flags in the output reports issues in convergence. If \code{flag} is set to 0,
+nothing is done. If set to 1, the model selection will avoid flagged models
+(will favor parcimonious models).
+If set to 2, calls for which the best selected model had convergence issue
+will be removed.
 }
 \seealso{
 getGenicDP readXCI
