@@ -124,3 +124,18 @@ readVCF4 <- function(vcf_file, merge_alts = F){
   dt[, POS := pos]
   return(dt)
 }
+
+#' @importFrom stringr str_extract
+#' @export
+read_AD_format <- function(file, het_cutoff){
+  fr <- fread(file)
+  re <- "^\\d+,\\d+" #First two numerics separated by a comma (ignore additional ALTs which are always 0 AFAIK)
+  mfr <- melt(fr, id.vars = c("CHROM", "POS"), variable.name = "sample", value.name = "AD")
+  mfr[, ADs := str_extract(AD, re)] #102 seconds
+  mfr <- mfr[ADs != "0,0"]
+  mfr[, AD_hap2 := as.numeric(gsub("^.*,", "", ADs))]
+  mfr <- mfr[AD_hap2 != 0]
+  mfr[, AD_hap1 := as.numeric(gsub(",.*$", "", ADs))]
+  het <- mfr[ AD_hap1 != 0 & AD_hap2 != 0]
+  return(het)
+}

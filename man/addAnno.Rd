@@ -4,8 +4,8 @@
 \alias{addAnno}
 \title{Read annotation file}
 \usage{
-addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
-  filter_mono_cutoff = 3, anno_file = NULL)
+addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 20, het_cutoff = 3,
+  filter_pool_cutoff = 3, anno_file = NULL)
 }
 \arguments{
 \item{dt}{A \code{data.table} object.}
@@ -17,8 +17,12 @@ is a simple read count filtering step.}
 \item{read_count_cutoff}{A \code{numeric}. Keep only SNPs that have at least
 that many reads.}
 
-\item{filter_mono_cutoff}{A \code{numeric}. If > 0, remove mono-allelic
-SNPs. See details for more information.}
+\item{het_cutoff}{A \code{numeric}. Keep only SNPs that have at least that
+many reads on each allele.}
+
+\item{filter_pool_cutoff}{A \code{numeric}. Keep only SNPs that have at
+least that many reads on each allele across all samples. See details for
+more information.}
 
 \item{anno_file}{A \code{character}. The name of a file containing annotations.}
 }
@@ -28,12 +32,13 @@ and annotations at the covered SNPs.
 }
 \description{
 Read a given annotation file and merge it with a data.table containing the
-relevant information to exstimate inactivated X chromosome expression and
+relevant information to estimate inactivated X chromosome expression and
 filter out SNPs with low coverage.
 }
 \details{
-\code{filter_mono_cutoff} will remove SNPs that do not have at least one read
-covering each allele accross the pooled samples. i.e: If any sample has at
-least one read covering the first allele and any sample has at least one
-read covering the second allele, then the SNP will be preserved.
+If the samples all have the same genotype (e.g: technical replicates),
+\code{filter_pool_cutoff} will sum counts across samples and preserve SNPs
+that pass the cutoff on both the reference and alternate alleles. This
+may lead to samples with 0 counts on either allele but will prevent removing
+heterozygous sites with lower coverage (especialliy in skewed samples).
 }

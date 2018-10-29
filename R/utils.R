@@ -119,3 +119,49 @@ xcir_clean <- function(bb_table){
   ret <- unique(bb_table[, clean_cols, with = F])
   return(ret)
 }
+
+
+#' Converting beta distribution parameters
+#'
+#' These functions convert parameter values between different beta distribution parametrization
+#'
+#' @param alpha First shape parameter
+#' @param beta Second shape parameter
+#' @param m Mode
+#' @param theta Concentration
+#' @param mean Mean
+#' @param var Variance
+#'
+#' @return A \code{list} with the two new parameters.
+#'
+#' @examples
+#'
+#' betaMV(1, 1)
+#' betaMV(1, 10)
+#' betaMV(10, 10)
+#' # In a data.table (such as XCIR output)
+#' dt <- data.table(it = LETTERS[1:3], a_est = c(1, 1, 10), b_est = c(1, 10, 10))
+#' dt[, `:=`(c("mu", "s2"), betaMV(a_est, b_est))]
+#'
+#'
+#' @rdname BetaConversion
+#' @export
+betaAB <- function(mean, var){
+  alpha <- (mu^2*(1-mu))/var - 1
+  beta <- (mu*(1-mu)^2)/var - 1
+  return(list(alpha, beta))
+}
+#' @rdname BetaConversion
+#' @export
+betaMC <- function(alpha, beta){
+  theta <- alpha+beta
+  m <- (alpha-1)/(theta-2)
+  return(list(m, theta))
+}
+#' @rdname BetaConversion
+#' @export
+betaMV <- function(alpha, beta){
+  mu <- alpha/(alpha + beta)
+  var <- (alpha*beta)/((alpha+beta)^2 * (alpha+beta+1))
+  return(list(mu, var))
+}

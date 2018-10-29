@@ -13,6 +13,9 @@
 #'  details.
 #' @param xciGenes A \code{character} or NULL. To be passed to \code{readXCI} to
 #'  select the training set of inactivated genes.
+#' @param rm_balanced A \code{logical}. If set to TRUE, do not process samples
+#'  that have the same read counts on both alleles for all training genes. In
+#'  practice, this only happens for samples with a single training gene.
 #' @param limits A \code{logical}. If set to TRUE, the optimization will be
 #'  constrained. Using upper bounds on the probability of sequencing error and
 #'  escape in the training set ensures that the dominant mixture represents the
@@ -35,7 +38,7 @@
 #' @seealso getGenicDP readXCI
 #' @export
 betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
-                        flag = 0, xciGenes = NULL, limits = TRUE){
+                        flag = 0, xciGenes = NULL, rm_balanced = TRUE, limits = TRUE){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
@@ -49,8 +52,12 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
     warning("No known silenced gene found in data.")
   }
 
-  ## TODO: This does not really need to be passed and could be handled at the subfunction level
-  balanced <- unique(dt_xci$sample)
+  ## TODO: This needs to be renamed. Was useful to only process the randomly skewed samples and use the rest as ref.
+  if(rm_balanced){
+    balanced <- unique(dt_xci[, mean(abs(AD_hap1 - AD_hap2)), by = sample][V1 != 0, sample])
+  } else{
+    balanced <- unique(dt_xci$sample)
+  }
 
   model <- .check_model(model)
   modl <- vector("list", length(model))
@@ -72,25 +79,6 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
   } else{
     dt <- modl[[1]]
   }
-  #if(model == "BB"){
-  #  dt <- BB(dt_xci, dt, balanced, limits)
-  #} else if(model == "MM"){
-  #  dt <- MM(dt_xci, dt, balanced, limits)
-  #} else if(model == "MM2"){
-  #  dt <- MM2(dt_xci, dt, balanced, limits)
-  #} else if(model == "MM3"){
-  #  dt <- MM3(dt_xci, dt, balanced, limits)
-  #} else if(model == "AUTO"){
-  #  bb <- BB(dt_xci, dt, balanced, limits)
-  #  mm <- MM(dt_xci, dt, balanced, limits)
-  #  mm2 <- MM2(dt_xci, dt, balanced, limits)
-  #  mm3 <- MM3(dt_xci, dt, balanced, limits)
-
-  #  aics <- .back_sel(bb, mm, mm2, mm3, flag = flag)
-  #  dt <- aics
-  #} else{
-  #  stop("Invalid model selected")
-  #}
 
   dt[, f := a_est/(a_est + b_est)]
   dt[, fg := dp1/tot]
@@ -273,7 +261,7 @@ MM <- function(dt_xci, full_dt, balanced, limits = F){
 
 
 # 1 BB for inactivated SNP and 1 BB for escaped SNP
-MM2 <- function(dt_xci, full_dt, balanced, limits = F){
+MM2 <- function(dt_xci, full_dt, balanced, limits = F, roundmax = T){
   dt <- copy(full_dt)
   for(sample_i in balanced){
     a0 <- c(1, 1, #Beta for the inactivated genes mean = a/(a+b) = .5
@@ -283,7 +271,8 @@ MM2 <- function(dt_xci, full_dt, balanced, limits = F){
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
     if(limits){
-      #ai,bi,ae,be > .5 to have a mode. p_inac > log(0.75/0.25) 3/4 of the training genes should be inactivated
+      # ai,bi,ae,be > .5 to have a mode
+      # p_inac > log(0.75/0.25) 3/4 of the training genes should be inactivated
       res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp,
                           lower = c(0, 0, -Inf, -Inf, log(0.75/0.25)), # 0 mins min(p_inac) > .5
                           upper = c(Inf, Inf, Inf, Inf, Inf))
@@ -319,24 +308,22 @@ MM2 <- function(dt_xci, full_dt, balanced, limits = F){
     flagi <- res_optim$message
     fi <- a_est_i/(a_est_i + b_est_i)
     fe <- a_est_e/(a_est_e + b_est_e)
+    # Exponentiated differences
+
+    if(roundmax){ #If we hit maximum numeric
+      if(is.infinite(a_est_e))
+        a_est_e <- .Machine$double.xmax
+      if(is.infinite(b_est_e))
+        b_est_e <- .Machine$double.xmax
+      if(is.infinite(fe))
+        fe <- 0.5
+    }
     if(!is.finite(fi) | !is.finite(fe)){
       stop(paste("For sample", sample_i, "fi is", fi, "and fe is", fe))
-    }
-    if(fi > fe){
+      #flagi <- "MM2: fi is infinite"
+    } else if(fi > fe){
       flagi <- "MM2: fi>fe"
     }
-    #  # If the escape mixture has a lower average than the inactive, this is probably not the correct model
-    #  dt[sample == sample_i, a_est := NA]
-    #  dt[sample == sample_i, b_est := NA]
-    #  dt[sample == sample_i, p_inac := NA]
-    #  dt[sample == sample_i, p_het := NA]
-#
-    #  dt[sample == sample_i, pi_escape := NA]
-    #  dt[sample == sample_i, k := NA]
-    #  dt[sample == sample_i, logL := NA] #Actually -logL
-    #  dt[sample == sample_i, AIC := NA]
-    #  dt[sample == sample_i, Ntrain := Nxcig]
-    #} else{
       dt[sample == sample_i, a_est := a_est_i]
       dt[sample == sample_i, b_est := b_est_i]
       dt[sample == sample_i, p_inac := p_inac_i]
@@ -534,7 +521,8 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
 #' @importFrom ggplot2 element_blank scale_colour_manual facet_wrap
 #' @importFrom ggplot2 geom_point geom_hline theme_bw
 #' @export
-plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
+plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = "", color_col = NULL,
+                           xist = T){
   plotfrac <- xci_dt[order(sample)]
   if(!is.null(xcig)){
     xcig <- readXCI(xcig)
@@ -561,7 +549,11 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
     gp <- geom_point()
   }
 
-  p <- ggplot(plotfrac, aes(x = index, y = fg))
+  if(is.null(color_col)){
+    p <- ggplot(plotfrac, aes(x = index, y = fg))
+  } else{
+    p <- ggplot(plotfrac, aes(x = index, y = fg, color = plotfrac[[color_col]]))
+  }
   ## TODO: Add the other components when available (also add option to return components from all models to betaBinomXI)
 
   p <- p + geom_hline(aes(yintercept = f))
@@ -572,7 +564,41 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = ""){
   p <- p + theme_bw() + theme(axis.text.x = element_blank(),
                               axis.ticks.x = element_blank(),
                               axis.title.x = element_blank())
+  if(xist){
+    xists <- xci_dt[GENE == "XIST"]
+    p <- p + geom_point(data = xists, aes(x = Ntrain/2, y = fg), color = "red", shape = 4, size = 4)
+  }
   print(p)
   return(invisible(p))
 }
 
+plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
+  plottable <- xci_table[order(sample)]
+  plottable[, index := rowid(plottable$sample)]
+  plottable[, set := "Test"]
+  plottable[GENE %in% xcig, set := "Training"]
+  # Add standard deviation of estimates
+  plottable[, sd_f := sqrt((a_est + b_est)/((a_est + b_est)^2 * (a_est + b_est + 1)))]
+  plottable[, f_sd_up := pmin(0.5, f + sd_f)]
+  plottable[, f_sd_lo := pmax(0, f - sd_f)]
+  xists <- plottable[GENE == "XIST"]
+  # Compute index
+  p <- ggplot(plottable, aes(x = index, y = fg))
+  # Plot the skewing
+  p <- p + geom_hline(aes(yintercept = f))
+  p <- p + geom_hline(aes(yintercept = f_sd_up), lty = "dashed")
+  p <- p + geom_hline(aes(yintercept = f_sd_lo), lty = "dashed")
+  # Plot the allelic ratios
+  p <- p + geom_point(aes(shape = model, color = set))
+  # Handle gene names
+  # Color by readcount
+  # Plot XIST
+  # Add theme
+  theme_QC <- theme_bw() + theme(axis.text.x = element_blank(),
+                                 axis.ticks.x = element_blank(),
+                                 axis.title.x = element_blank())
+  p <- p + facet_wrap(~sample, scale = "free_x") + theme_QC
+  p <- p + geom_point(data = xists, aes(x = Ntrain/2, y = fg), color = "red", shape = 4, size = 4)
+  print(p)
+  return(invisible(p))
+}

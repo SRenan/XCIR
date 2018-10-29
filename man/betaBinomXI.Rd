@@ -5,7 +5,7 @@
 \title{Fit mixture model}
 \usage{
 betaBinomXI(genic_dt, model = "AUTO", plot = FALSE, hist = FALSE,
-  flag = 0, xciGenes = NULL, limits = TRUE)
+  flag = 0, xciGenes = NULL, rm_balanced = TRUE, limits = TRUE)
 }
 \arguments{
 \item{genic_dt}{A \code{data.table}. The table as outputted by \code{getGenicDP}.}
@@ -24,6 +24,10 @@ details.}
 
 \item{xciGenes}{A \code{character} or NULL. To be passed to \code{readXCI} to
 select the training set of inactivated genes.}
+
+\item{rm_balanced}{A \code{logical}. If set to TRUE, do not process samples
+that have the same read counts on both alleles for all training genes. In
+practice, this only happens for samples with a single training gene.}
 
 \item{limits}{A \code{logical}. If set to TRUE, the optimization will be
 constrained. Using upper bounds on the probability of sequencing error and
