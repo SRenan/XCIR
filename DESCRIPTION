@@ -1,7 +1,7 @@
 Package: XCIR
 Type: Package
 Title: Estimating inactivated X chromosome expression
-Version: 0.1.24
+Version: 0.1.25
 Author: Renan Sauteraud, Dajiang Liu
 Maintainer: Renan Sauteraud <rxs575@psu.edu>
 Description: Tools for the analysis of X chromosome inactivation (XCI) and XCI-escape inference.

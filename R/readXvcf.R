@@ -156,7 +156,7 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
 #' Read annotation file
 #'
 #' Read a given annotation file and merge it with a data.table containing the
-#' relevant information to exstimate inactivated X chromosome expression and
+#' relevant information to estimate inactivated X chromosome expression and
 #' filter out SNPs with low coverage.
 #'
 #' @param dt A \code{data.table} object.
@@ -165,21 +165,26 @@ readXVcf <- function(vcf_file, haps_file = NULL, rm_homo = TRUE){
 #' is a simple read count filtering step.
 #' @param read_count_cutoff A \code{numeric}. Keep only SNPs that have at least
 #'  that many reads.
-#' @param filter_mono_cutoff A \code{numeric}. If > 0, remove mono-allelic
-#'  SNPs. See details for more information.
+#' @param het_cutoff A \code{numeric}. Keep only SNPs that have at least that
+#'  many reads on each allele.
+#' @param filter_pool_cutoff A \code{numeric}. Keep only SNPs that have at
+#'  least that many reads on each allele across all samples. See details for
+#'  more information.
 #' @param anno_file A \code{character}. The name of a file containing annotations.
 #'
 #' @details
-#' \code{filter_mono_cutoff} will remove SNPs that do not have at least one read
-#' covering each allele accross the pooled samples. i.e: If any sample has at
-#' least one read covering the first allele and any sample has at least one
-#' read covering the second allele, then the SNP will be preserved.
+#' If the samples all have the same genotype (e.g: technical replicates),
+#' \code{filter_pool_cutoff} will sum counts across samples and preserve SNPs
+#' that pass the cutoff on both the reference and alternate alleles. This
+#' may lead to samples with 0 counts on either allele but will prevent removing
+#' heterozygous sites with lower coverage (especialliy in skewed samples).
 #'
 #' @return A \code{data.table} object that contains allelic coverage, genotype
 #' and annotations at the covered SNPs.
 #'
 #' @export
-addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20, filter_mono_cutoff = 3, anno_file = NULL){
+addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
+                    het_cutoff = 3, filter_pool_cutoff = 3, anno_file = NULL){
   dt <- dt[AD_hap1 + AD_hap2 > read_count_cutoff]
   if(seqm_annotate){
     output_dir <- tempdir()
@@ -196,10 +201,14 @@ addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20, filter_mon
   anno[, ANNO_FULL := NULL]
   anno <- anno[GENE != "Intergenic"]
   DPR_anno <- merge(unique(anno), dt,  by = c("CHROM", "POS", "REF", "ALT"))
-  if(filter_mono_cutoff > 0){
-    poskp <- DPR_anno[, list(sum(AD_hap1), sum(AD_hap2)), by = c("CHROM", "POS")][V1 >= filter_mono_cutoff & V2 >= filter_mono_cutoff][, POS]
+
+  # Finding heterozygous SNPs
+  if(filter_pool_cutoff > 0){
+    poskp <- DPR_anno[, list(sum(AD_hap1), sum(AD_hap2)), by = c("CHROM", "POS")][V1 >= filter_pool_cutoff & V2 >= filter_pool_cutoff][, POS]
     DPR_anno <- DPR_anno[POS %in% poskp]
   }
+  DPR_anno <- DPR_anno[AD_hap1 >= het_cutoff & AD_hap2 >= het_cutoff]
+
   return(DPR_anno)
 }
 

@@ -1,3 +1,4 @@
+# This file for functions under development before they get added to the files where they belong
 
 # From XCIR output (skewing estimates) make calls for new SNPs
 newCalls <- function(xcirout, newdata){
@@ -50,7 +51,6 @@ fisherCombine <- function(newcalls, maxSNP = 4, method = "fisher"){
 }
 
 
-# This file for functions under development before they get added to the files where they belong
 
 getZ <- function(xcirout){
   Zdt <- copy(xcirout)
@@ -77,26 +77,4 @@ betaParam <- function(alpha = NULL, beta = NULL, m = NULL, theta = NULL, mu = NU
     stop("At least one pair of parameters must be specified")
   }
   return(list(alpha, beta, m, theta, mu, sigma2))
-}
-
-beta_shape2meanvar <- function(alpha, beta){
-  mean <- alpha/(alpha+beta)
-  var <- (alpha*beta)/((alpha+beta)^2 * (alpha+beta+1))
-  return(list(mean, var))
-}
-beta_shape2modconc <- function(alpha, beta){
-  theta <- alpha+beta
-  m <- (alpha-1)/(theta-2)
-  return(list(m, theta))
-}
-beta_mconc2shape <- function(m, theta){
-  alpha <- m*theta - 2*m + 1
-  beta <- theta - alpha
-  return(list(alpha, beta))
-}
-beta_mconc2meanvar <- function(m, theta){
-  ab <- beta_mconc2shape(m, theta)
-  a <- ab[[1]]
-  b <- ab[[2]]
-  return(beta_shape2meanvar(a, b))
 }

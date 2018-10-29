@@ -4,7 +4,8 @@
 \alias{plotBBCellFrac}
 \title{Plot cell fraction estimates}
 \usage{
-plotBBCellFrac(xci_dt, xcig = NULL, gene_names = "")
+plotBBCellFrac(xci_dt, xcig = NULL, gene_names = "", color_col = NULL,
+  xist = T)
 }
 \arguments{
 \item{xci_dt}{A \code{data.table}. The data to be used for the estimate
@@ -15,7 +16,9 @@ genes only, setting xcig to TRUE will filter the data.}
 
 \item{gene_names}{A \code{character}. If left blank, only genes that are
 further than 20% away from the estimated skewing will be annotated, if set
-to "all", all genes will be named. Set to "none" to remove all annotations.}
+to "all", all genes will be named. Set to "none" to remove all annotations.
+Alternately, a \code{character} vector can be passed to annotate specific
+genes of interest.}
 }
 \description{
 Plot cell fraction estimates from list of known XCI genes
