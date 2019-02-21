@@ -13,9 +13,13 @@
 #'  details.
 #' @param xciGenes A \code{character} or NULL. To be passed to \code{readXCI} to
 #'  select the training set of inactivated genes.
-#' @param rm_balanced A \code{logical}. If set to TRUE, do not process samples
-#'  that have the same read counts on both alleles for all training genes. In
-#'  practice, this only happens for samples with a single training gene.
+#' @param a0 A \code{numeric} or NULL. Starting values for the optimization. This
+#'  should not be used with more than one model as different models have
+#'  different parameters. Leave NULL unless you know what you're doing.
+#' @param optimizer A \code{character}. The optimization function to use for minimization
+#'  of the log-likelihood. Should be one of "nlminb" or "optim".
+#' @param method A \code{character}. The method to be passed to \code{optim}
+#'  when it is the selected \code{optimizer}.
 #' @param limits A \code{logical}. If set to TRUE, the optimization will be
 #'  constrained. Using upper bounds on the probability of sequencing error and
 #'  escape in the training set ensures that the dominant mixture represents the
@@ -38,7 +42,9 @@
 #' @seealso getGenicDP readXCI
 #' @export
 betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
-                        flag = 0, xciGenes = NULL, rm_balanced = TRUE, limits = TRUE){
+                        flag = 0, xciGenes = NULL, a0 = NULL,
+                        optimizer = "nlminb", method = NULL, limits = TRUE,
+                        debug = F){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
@@ -52,25 +58,26 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
     warning("No known silenced gene found in data.")
   }
 
-  ## TODO: This needs to be renamed. Was useful to only process the randomly skewed samples and use the rest as ref.
-  if(rm_balanced){
-    balanced <- unique(dt_xci[, mean(abs(AD_hap1 - AD_hap2)), by = sample][V1 != 0, sample])
-  } else{
-    balanced <- unique(dt_xci$sample)
-  }
+  ### TODO: This needs to be renamed. Was useful to only process the randomly skewed samples and use the rest as ref.
+  #rm_balanced <- TRUE
+  #if(rm_balanced){
+  #  balanced <- unique(dt_xci[, mean(abs(AD_hap1 - AD_hap2)), by = sample][V1 != 0, sample])
+  #} else{
+  #  balanced <- unique(dt_xci$sample)
+  #}
 
   model <- .check_model(model)
   modl <- vector("list", length(model))
   for(i in seq_along(modl)){
     modi <- model[i]
     if(modi == "BB"){
-      dt <- BB(dt_xci, dt, balanced, limits)
+      dt <- BB(dt_xci, dt, a0, optimizer, method, limits, debug)
     } else if(modi == "MM"){
-      dt <- MM(dt_xci, dt, balanced, limits)
+      dt <- MM(dt_xci, dt, a0, optimizer, method, limits)
     } else if(modi == "MM2"){
-      dt <- MM2(dt_xci, dt, balanced, limits)
+      dt <- MM2(dt_xci, dt, a0, optimizer, method, limits)
     } else if(modi == "MM3"){
-      dt <- MM3(dt_xci, dt, balanced, limits)
+      dt <- MM3(dt_xci, dt, a0, optimizer, method, limits)
     }
     modl[[i]] <- dt
   }
@@ -127,11 +134,10 @@ dbb <- function(x, n, a, b){#Beta binomial
     bn <- beta(x+a, n-x+b)
     bd <- beta(a, b)
     y <- c * bn / bd
-    #y[is.nan(y)] <- 0
     ninf <- sum(is.infinite(y))
-    if(ninf > 0){
-      warning(paste("dbb returns",ninf, "infinite values"))
-    }
+    #if(ninf > 0){
+    #  warning(paste("dbb returns",ninf, "infinite values"))
+    #}
     y <- y[is.finite(y)]
     return(y);
 }
@@ -177,25 +183,48 @@ pbb <- function(x, n, a, b, type = "midp"){ #p-value for exact inference
 ################################################################################
 # Beta-binomial model:
 
-BB <- function(dt_xci, full_dt, balanced, limits = F){
+BB <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, debug = F){
   dt <- copy(full_dt)
-  for(sample_i in balanced){
-    a0  <- c(1,1);
+  samples <- unique(dt_xci$sample)
+  if(is.null(a0)){
+    a0  <- c(1,1)
+  }
+  for(sample_i in samples){
+    if(debug)
+      print(sample_i)
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
     if(limits){
-      res_optim <- nlminb(a0, .logL_BB, dp1 = dp1, dp = dp,
-                          lower = c(0, 0), upper = c(Inf, Inf))
+      lowb <- c(0, 0)
+      upb <- c(Inf, Inf)
+      upb <- c(699, 700)
+      method <- "L-BFGS-B"
     } else{
-      res_optim <- nlminb(a0, .logL_BB, dp1 = dp1, dp = dp)
+      lowb <- -Inf
+      upb <- Inf
     }
+    if(optimizer == "nlminb"){
+      res_optim <- nlminb(a0, .logL_BB, dp1 = dp1, dp = dp,
+                          lower = lowb, upper = upb)
+      negLogLname <- "objective"
+    } else if(optimizer == "optim"){
+      res_optim <- optim(par = a0, fn = .logL_BB, method =  method,
+                         dp1 = dp1, dp = dp,
+                         lower = lowb, upper = upb)
+      negLogLname <- "value"
+    } else{
+      stop("Unknown optimizer. Should be one of 'nlminb', 'optim'")
+    }
+    message <- res_optim$message
+    message <- ifelse(is.null(message), "", message)
     dt[sample == sample_i, a_est := exp(res_optim$par[1])]
     dt[sample == sample_i, b_est := exp(res_optim$par[2])]
     dt[sample == sample_i, model := "BB"]
     dt[sample == sample_i, k := length(res_optim$par)]
-    dt[sample == sample_i, logL := res_optim$objective] #-logL
-    dt[sample == sample_i, flag := res_optim$message]
+    dt[sample == sample_i, logL := res_optim[[negLogLname]]] #-logL
+    dt[sample == sample_i, convergence := res_optim$convergence]
+    dt[sample == sample_i, flag := message]
     dt[sample == sample_i, AIC := 2*k + 2*logL]
     dt[sample == sample_i, Ntrain := Nxcig]
     dt[sample == sample_i, BIC := log(Ntrain)*k + 2*logL]
@@ -213,29 +242,48 @@ BB <- function(dt_xci, full_dt, balanced, limits = F){
 # Mixture models:
 
 # 1 Binom for sequencing errors and 1 BB for inactivated heterozygous SNP
-MM <- function(dt_xci, full_dt, balanced, limits = F){
+MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F){
   dt <- copy(full_dt)
-  for(sample_i in balanced){
+  samples <- unique(dt_xci$sample)
+  if(is.null(a0)){
     a0  <- c(1, 1, log(0.98/0.02), log(0.02/0.98))
+  }
+  for(sample_i in samples){
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
     if(limits){
-      res_optim <- nlminb(a0, .logL_MM, dp1 = dp1, dp = dp,
-                          lower = c(0, 0, 0, -Inf),
-                          #lower = c(-Inf, -Inf, 0, -Inf),
-                          upper = c(Inf, Inf, Inf, log(0.2/0.8)))
+      lowb <- c(0, 0, 0, -Inf)
+      upb <- c(Inf, Inf, Inf, log(0.2/0.8))
+      method <- "L-BFGS-B"
     } else{
-      res_optim <- nlminb(a0, .logL_MM, dp1 = dp1, dp = dp)
+      lowb <- -Inf
+      upb <- Inf
     }
+    if(optimizer == "nlminb"){
+      res_optim <- nlminb(a0, .logL_MM, dp1 = dp1, dp = dp,
+                          lower = lowb, upper = upb)
+      negLogLname <- "objective"
+    } else if(optimizer == "optim"){
+      res_optim <- optim(par = a0, fn = .logL_MM, method = method,
+                         dp1 = dp1, dp = dp,
+                         lower = lowb, upper = upb)
+      negLogLname <- "value"
+    } else{
+      stop("Unknown optimizer. Should be one of 'nlminb', 'optim'")
+    }
+    message <- res_optim$message
+    message <- ifelse(is.null(message), "", message)
+
     dt[sample == sample_i, a_est := exp(res_optim$par[1])]
     dt[sample == sample_i, b_est := exp(res_optim$par[2])]
     dt[sample == sample_i, p_het := exp(res_optim$par[3])/(1 + exp(res_optim$par[3]))]
     dt[sample == sample_i, pi_err := exp(res_optim$par[4])/(1 + exp(res_optim$par[4]))]
     dt[sample == sample_i, model := "MM"]
     dt[sample == sample_i, k := length(res_optim$par)]
-    dt[sample == sample_i, logL := res_optim$objective] #Actually -logL
-    dt[sample == sample_i, flag := res_optim$message]
+    dt[sample == sample_i, logL := res_optim[[negLogLname]]] #Actually -logL
+    dt[sample == sample_i, convergence := res_optim$convergence]
+    dt[sample == sample_i, flag := message]
     dt[sample == sample_i, AIC := 2*k + 2*logL]
     dt[sample == sample_i, Ntrain := Nxcig]
   }
@@ -261,24 +309,47 @@ MM <- function(dt_xci, full_dt, balanced, limits = F){
 
 
 # 1 BB for inactivated SNP and 1 BB for escaped SNP
-MM2 <- function(dt_xci, full_dt, balanced, limits = F, roundmax = T){
+MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, roundmax = T){
   dt <- copy(full_dt)
-  for(sample_i in balanced){
+  samples <- unique(dt_xci$sample)
+  if(is.null(a0)){
     a0 <- c(1, 1, #Beta for the inactivated genes mean = a/(a+b) = .5
             2, 2, #Beta for the escape  #2 has more density around 0.5
             log(0.9/0.1)) #Initial proba that a training gene is indeed inactivated in this sample
+  }
+  for(sample_i in samples){
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
     if(limits){
       # ai,bi,ae,be > .5 to have a mode
       # p_inac > log(0.75/0.25) 3/4 of the training genes should be inactivated
-      res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp,
-                          lower = c(0, 0, -Inf, -Inf, log(0.75/0.25)), # 0 mins min(p_inac) > .5
-                          upper = c(Inf, Inf, Inf, Inf, Inf))
+      # res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp,
+      #                     lower = c(0, 0, -Inf, -Inf, log(0.75/0.25)), # 0 mins min(p_inac) > .5
+      #                     upper = c(Inf, Inf, Inf, Inf, Inf))
+      lowb <- c(0, 0, -Inf, -Inf, log(0.75/0.25))
+      upb <- c(Inf, Inf, Inf, Inf, Inf)
+      method <- "L-BFGS-B"
     } else{
-      res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp)
+      # res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp)
+      lowb <- -Inf
+      upb <- Inf
     }
+    if(optimizer == "nlminb"){
+      res_optim <- nlminb(a0, .logL_MM2, dp1 = dp1, dp = dp,
+                          lower = lowb, upper = upb)
+      negLogLname <- "objective"
+    } else if(optimizer == "optim"){
+      res_optim <- optim(par = a0, fn = .logL_MM2, method = method,
+                         dp1 = dp1, dp = dp,
+                         lower = lowb, upper = upb)
+      negLogLname <- "value"
+    } else{
+      stop("Unknown optimizer. Should be one of 'nlminb', 'optim'")
+    }
+    message <- res_optim$message
+    message <- ifelse(is.null(message), "", message)
+
     #p_inac_i <- exp(res_optim$par[5])/(1 + exp(res_optim$par[5]))
     expar5 <- exp(res_optim$par[5])
     if(is.finite(expar5)){
@@ -289,23 +360,11 @@ MM2 <- function(dt_xci, full_dt, balanced, limits = F, roundmax = T){
       stop("Something went wrong with the estimation of the inactivated mixture proportion")
     }
     # Selecting the right component to get alpha/beta corresponding to the inactivated group
-    #if(p_inac_i >= .5){ # We assume that the list should always have a majority of inactivated genes
-    #  a_est_i <- exp(res_optim$par[1])
-    #  b_est_i <- exp(res_optim$par[2])
-    #  a_est_e <- exp(res_optim$par[3])
-    #  b_est_e <- exp(res_optim$par[4])
-    #} else{
-    #  p_inac_i <- 1-p_inac_i
-    #  a_est_i <- exp(res_optim$par[3])
-    #  b_est_i <- exp(res_optim$par[4])
-    #  a_est_e <- exp(res_optim$par[1])
-    #  b_est_e <- exp(res_optim$par[2])
-    #}
     a_est_i <- exp(res_optim$par[1])
     b_est_i <- exp(res_optim$par[2])
     a_est_e <- exp(res_optim$par[3])
     b_est_e <- exp(res_optim$par[4])
-    flagi <- res_optim$message
+    flagi <- message
     fi <- a_est_i/(a_est_i + b_est_i)
     fe <- a_est_e/(a_est_e + b_est_e)
     # Exponentiated differences
@@ -320,7 +379,6 @@ MM2 <- function(dt_xci, full_dt, balanced, limits = F, roundmax = T){
     }
     if(!is.finite(fi) | !is.finite(fe)){
       stop(paste("For sample", sample_i, "fi is", fi, "and fe is", fe))
-      #flagi <- "MM2: fi is infinite"
     } else if(fi > fe){
       flagi <- "MM2: fi>fe"
     }
@@ -331,7 +389,8 @@ MM2 <- function(dt_xci, full_dt, balanced, limits = F, roundmax = T){
       dt[sample == sample_i, pi_escape := a_est_e/(a_est_e + b_est_e)]
       dt[sample == sample_i, model := "MM2"]
       dt[sample == sample_i, k := length(res_optim$par)]
-      dt[sample == sample_i, logL := res_optim$objective] #Actually -logL
+      dt[sample == sample_i, logL := res_optim[[negLogLname]]] #Actually -logL
+      dt[sample == sample_i, convergence := convergence]
       dt[sample == sample_i, flag := flagi]
       dt[sample == sample_i, AIC := 2*k + 2*logL]
       dt[sample == sample_i, Ntrain := Nxcig]
@@ -356,25 +415,48 @@ MM2 <- function(dt_xci, full_dt, balanced, limits = F, roundmax = T){
 }
 
 # 1 BB for inac SNPs 1 BB for escaped SNP and 1 Binom for sequencing err
-MM3 <- function(dt_xci, full_dt, balanced, limits = F){
+MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, limits = F){
   dt <- copy(full_dt)
-  for(sample_i in balanced){
+  samples <- unique(dt_xci$sample)
+  if(is.null(a0)){
     a0 <- c(1, 1, #Beta for the inactivated genes mean = a/(a+b) = .5
             2, 2, #Beta for the escape  #2 has more density around 0.5
             log(0.9/0.1), #Initial proba that a training gene is indeed inactivated in this sample
             log(0.98/0.02), #Proba of SNP being actually het
             log(0.02/0.98))
+  }
+  for(sample_i in samples){
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
     err <- try({
       if(limits){
-        res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp,
-                            lower = c(0, 0, -Inf, -Inf, 0, 0, -Inf),
-                            upper = c(Inf, Inf, Inf, Inf, Inf, Inf, log(0.2/0.8)))
+        # res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp,
+                            # lower = c(0, 0, -Inf, -Inf, 0, 0, -Inf),
+                            # upper = c(Inf, Inf, Inf, Inf, Inf, Inf, log(0.2/0.8)))
+        lowb <- c(0, 0, -Inf, -Inf, 0, 0, -Inf)
+        upb <- c(Inf, Inf, Inf, Inf, Inf, Inf, log(0.2/0.8))
+        method <- "L-BFGS-B"
       } else{
-        res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp)
+        lowb <- -Inf
+        upb <- Inf
+        # res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp)
       }
+      if(optimizer == "nlminb"){
+        res_optim <- nlminb(a0, .logL_MM3, dp1 = dp1, dp = dp,
+                            lower = lowb, upper = upb)
+        negLogLname <- "objective"
+      } else if(optimizer == "optim"){
+        res_optim <- optim(par = a0, fn = .logL_MM3, method = method,
+                           dp1 = dp1, dp = dp,
+                           lower = lowb, upper = upb)
+        negLogLname <- "value"
+      } else{
+        stop("Unknown optimizer. Should be one of 'nlminb', 'optim'")
+      }
+      message <- res_optim$message
+      message <- ifelse(is.null(message), "", message)
+
       expar5 <- exp(res_optim$par[5])
       if(is.finite(expar5)){
         p_inac_i <- expar5/(1 + expar5)
@@ -399,7 +481,7 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
       b_est_i <- exp(res_optim$par[2])
       a_est_e <- exp(res_optim$par[3])
       b_est_e <- exp(res_optim$par[4])
-      flagi <- res_optim$message
+      flagi <- message
       fi <- a_est_i/(a_est_i + b_est_i)
       fe <- a_est_e/(a_est_e + b_est_e)
       ferr_i <- exp(res_optim$par[7])/(1 + exp(res_optim$par[7]))
@@ -432,7 +514,9 @@ MM3 <- function(dt_xci, full_dt, balanced, limits = F){
       dt[sample == sample_i, pi_err := ferr_i]
       dt[sample == sample_i, model := "MM3"]
       dt[sample == sample_i, k := length(res_optim$par)]
-      dt[sample == sample_i, logL := res_optim$objective] #Actually -logL
+      # dt[sample == sample_i, logL := res_optim$objective] #Actually -logL
+      dt[sample == sample_i, logL := res_optim[[negLogLname]]] #Actually -logL
+      dt[sample == sample_i, convergence := res_optim$convergence]
       dt[sample == sample_i, flag := flagi]
       dt[sample == sample_i, AIC := 2*k + 2*logL]
       dt[sample == sample_i, Ntrain := Nxcig]
@@ -572,7 +656,10 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = "", color_col = NUL
   return(invisible(p))
 }
 
+#' @export
 plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
+  # TODO: Order the genes along X OR by their allelic ratio
+  # TODO: Add confint based on the distribution: https://stats.stackexchange.com/questions/82475/calculate-the-confidence-interval-for-the-mean-of-a-beta-distribution
   plottable <- xci_table[order(sample)]
   plottable[, index := rowid(plottable$sample)]
   plottable[, set := "Test"]
@@ -592,13 +679,18 @@ plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
   p <- p + geom_point(aes(shape = model, color = set))
   # Handle gene names
   # Color by readcount
-  # Plot XIST
   # Add theme
   theme_QC <- theme_bw() + theme(axis.text.x = element_blank(),
                                  axis.ticks.x = element_blank(),
                                  axis.title.x = element_blank())
   p <- p + facet_wrap(~sample, scale = "free_x") + theme_QC
+  # Plot XIST
   p <- p + geom_point(data = xists, aes(x = Ntrain/2, y = fg), color = "red", shape = 4, size = 4)
+  # Add training gene count
+  p <- p + geom_text(aes(x = 0, y= max(fg) + .01, label = paste("N =", N)), hjust = "left")
   print(p)
   return(invisible(p))
 }
+
+#TODO: A QC plot based on the annotated dataframe instead of the gene summary.
+# It requires keeping track of all SNPs (instead of the sums or just top SNPs)

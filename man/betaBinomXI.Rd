@@ -5,7 +5,8 @@
 \title{Fit mixture model}
 \usage{
 betaBinomXI(genic_dt, model = "AUTO", plot = FALSE, hist = FALSE,
-  flag = 0, xciGenes = NULL, rm_balanced = TRUE, limits = TRUE)
+  flag = 0, xciGenes = NULL, a0 = NULL, optimizer = "nlminb",
+  method = NULL, limits = TRUE, debug = F)
 }
 \arguments{
 \item{genic_dt}{A \code{data.table}. The table as outputted by \code{getGenicDP}.}
@@ -25,9 +26,15 @@ details.}
 \item{xciGenes}{A \code{character} or NULL. To be passed to \code{readXCI} to
 select the training set of inactivated genes.}
 
-\item{rm_balanced}{A \code{logical}. If set to TRUE, do not process samples
-that have the same read counts on both alleles for all training genes. In
-practice, this only happens for samples with a single training gene.}
+\item{a0}{A \code{numeric} or NULL. Starting values for the optimization. This
+should not be used with more than one model as different models have
+different parameters. Leave NULL unless you know what you're doing.}
+
+\item{optimizer}{A \code{character}. The optimization function to use for minimization
+of the log-likelihood. Should be one of "nlminb" or "optim".}
+
+\item{method}{A \code{character}. The method to be passed to \code{optim}
+when it is the selected \code{optimizer}.}
 
 \item{limits}{A \code{logical}. If set to TRUE, the optimization will be
 constrained. Using upper bounds on the probability of sequencing error and

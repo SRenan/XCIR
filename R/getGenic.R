@@ -31,8 +31,10 @@ getGenicDP <- function(dt_anno, highest_expr = FALSE, pool = FALSE, gender_file 
     dt_anno <- merge(dt_anno, sex[, list(sample, gender)], by = "sample")
   }
   else if(!"gender" %in% names(dt_anno)){
-    stop("If there is no 'gender' column in the input, a gender_file mapping
-         sample to gender should be provided")
+    #stop("If there is no 'gender' column in the input, a gender_file mapping
+    #     sample to gender should be provided")
+    warning("There are no 'gender' column in the dataset. If not all subjects
+            are female, remove them or add a 'gender' column and run again.")
   }
   dt_anno <- dt_anno[gender == "female"]
   dt_anno <- dt_anno[, n_snps := .N, by = c("CHROM", "sample", "GENE")]
