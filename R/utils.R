@@ -120,6 +120,28 @@ xcir_clean <- function(bb_table){
   return(ret)
 }
 
+#' Classify X-genes
+#'
+#' Classify X-linked genes between Escape (E), Variable Escape (VE) and Silenced (S)
+#'
+#' @param xciObj A \code{data.table}. The table returned by \code{betaBinomXI}
+#'
+#' @return A \code{data.table} with genes and their XCI-state.
+#'
+#' @export
+getXCIstate <- function(xciObj){
+  if(!"status" %in% names(xciObj))
+    xciObj[, status := ifelse(p_value < 0.05, "E", "S")]
+  out <- setkey(xciObj, GENE, status)[, .N, by = c("GENE", "status")][CJ(GENE, status, unique = T), allow.cartesian = T][is.na(N), N := 0L]
+  out[, Ntot := sum(N), by = "GENE"]
+  outE <- out[status == "E"]#
+  outE[, pe := N/Ntot]
+  ret <- outE[, list(GENE, Ntot, pe)]
+  ret[, XCIstate := ifelse(pe <= .25, "S", "VE")]
+  ret[, XCIstate := ifelse(pe >= .75, "E", XCIstate)]
+  return(ret)
+}
+
 
 #' Converting beta distribution parameters
 #'

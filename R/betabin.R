@@ -73,11 +73,11 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
     if(modi == "BB"){
       dt <- BB(dt_xci, dt, a0, optimizer, method, limits, debug)
     } else if(modi == "MM"){
-      dt <- MM(dt_xci, dt, a0, optimizer, method, limits)
+      dt <- MM(dt_xci, dt, a0, optimizer, method, limits, debug)
     } else if(modi == "MM2"){
-      dt <- MM2(dt_xci, dt, a0, optimizer, method, limits)
+      dt <- MM2(dt_xci, dt, a0, optimizer, method, limits, debug)
     } else if(modi == "MM3"){
-      dt <- MM3(dt_xci, dt, a0, optimizer, method, limits)
+      dt <- MM3(dt_xci, dt, a0, optimizer, method, limits, debug)
     }
     modl[[i]] <- dt
   }
@@ -242,13 +242,15 @@ BB <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, 
 # Mixture models:
 
 # 1 Binom for sequencing errors and 1 BB for inactivated heterozygous SNP
-MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F){
+MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, debug = F){
   dt <- copy(full_dt)
   samples <- unique(dt_xci$sample)
   if(is.null(a0)){
     a0  <- c(1, 1, log(0.98/0.02), log(0.02/0.98))
   }
   for(sample_i in samples){
+    if(debug)
+      print(sample_i)
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
@@ -309,7 +311,7 @@ MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, 
 
 
 # 1 BB for inactivated SNP and 1 BB for escaped SNP
-MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, roundmax = T){
+MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, roundmax = T, debug = F){
   dt <- copy(full_dt)
   samples <- unique(dt_xci$sample)
   if(is.null(a0)){
@@ -318,6 +320,8 @@ MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
             log(0.9/0.1)) #Initial proba that a training gene is indeed inactivated in this sample
   }
   for(sample_i in samples){
+    if(debug)
+      print(sample_i)
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
@@ -415,7 +419,7 @@ MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
 }
 
 # 1 BB for inac SNPs 1 BB for escaped SNP and 1 Binom for sequencing err
-MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, limits = F){
+MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, limits = F, debug = F){
   dt <- copy(full_dt)
   samples <- unique(dt_xci$sample)
   if(is.null(a0)){
@@ -426,6 +430,8 @@ MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, 
             log(0.02/0.98))
   }
   for(sample_i in samples){
+    if(debug)
+      print(sample_i)
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
