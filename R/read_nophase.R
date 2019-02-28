@@ -86,10 +86,6 @@ readVCF4 <- function(vcf_file, merge_alts = F){
       stop(err)
     }
   }
-  #if(!(length(alt2) == 1 & alt2 == "<*>")){
-  #  err <- "There are more than one secondary alternate allele or it is not a deletion '<*>'"
-  #  stop(err)
-  #}
 
   nref <- sapply(AD, "[[", 1)
   nalt1 <- sapply(AD, "[[", 2)

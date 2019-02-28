@@ -36,6 +36,10 @@ setMethod("initialize", "xcirObj", function(.Object, data = data.table(), info =
   return(obj)
 })
 
+xcirObj <- function(data, info){
+  obj <- new("xcirObj", data = data, info = info)
+}
+
 ################################################################################
 # METHODS
 ################################################################################
