@@ -183,3 +183,37 @@ addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
               row.names = FALSE, quote = FALSE, sep = "\t")
 }
 
+#' XCI consensus
+#'
+#' Read consensus & XCIR calls for all X-linked genes
+#'
+#' @param redownload A \code{logical}. If set to TRUE, the original supplementary
+#' file is redownloaded from PMC.
+#' @param simple A \code{logical}. If set to TRUE, minimal information is returned,
+#' only for genes with an available XCIR classification.
+#'
+#' @details
+#' The consensus is as published in Supplementary table S1 of
+#' Balaton et al. (Biol Sex Differ. 2015). doi: 10.1186/s13293-015-0053-7
+#'
+#' @importFrom readxl read_xlsx
+#' @export
+consensusXCI <- function(redownload = F, simple = T){
+  if(redownload){
+    tmp = tempfile()
+    download.file("https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4696107/bin/13293_2015_53_MOESM1_ESM.xlsx", destfile = tmp, mode = "wb")
+    cons <- data.table(read_xlsx(tmp))
+  } else{
+    cons <- data.table(read_xlsx(system.file("extdata/13293_2015_53_MOESM1_ESM.xlsx", package = "XCIR")))
+  }
+  setnames(cons, tolower(chartr(" ", "_", names(cons))))
+  geu <- fread(system.file("extdata/GEU_xcir_181122_flag.tsv", package = "XCIR"))
+  geuall <- getXCIstate(geu)
+  geuskew <- getXCIstate(geu[f < .25])
+  geus <- merge(geuall, geuskew, by = "GENE", suffixes = c("_all", "_skew"), all.x = T)
+  cons <- merge(geus, cons, by.x = "GENE", by.y = "gene_name", all.y = T)
+  cons <- cons[, c(names(cons)[1:8], "y_homology"), with = F]
+  if(simple)
+    cons <- cons[!is.na(XCIstate_skew)]
+  return(cons)
+}
