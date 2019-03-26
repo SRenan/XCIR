@@ -670,6 +670,7 @@ plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
   plottable[, index := rowid(plottable$sample)]
   plottable[, set := "Test"]
   plottable[GENE %in% xcig, set := "Training"]
+  plottable[GENE %in% xcig, meanf := mean(fg), by = "sample"]
   # Add standard deviation of estimates
   plottable[, sd_f := sqrt((a_est + b_est)/((a_est + b_est)^2 * (a_est + b_est + 1)))]
   plottable[, f_sd_up := pmin(0.5, f + sd_f)]
@@ -681,6 +682,8 @@ plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
   p <- p + geom_hline(aes(yintercept = f))
   p <- p + geom_hline(aes(yintercept = f_sd_up), lty = "dashed")
   p <- p + geom_hline(aes(yintercept = f_sd_lo), lty = "dashed")
+  # Plot basic mean for comparison
+  p <- p + geom_hline(aes(yintercept = meanf), color = "blue", lty = "dotted")
   # Plot the allelic ratios
   p <- p + geom_point(aes(shape = model, color = set))
   # Handle gene names
@@ -693,8 +696,9 @@ plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
   # Plot XIST
   p <- p + geom_point(data = xists, aes(x = Ntrain/2, y = fg), color = "red", shape = 4, size = 4)
   # Add training gene count
-  p <- p + geom_text(aes(x = 0, y= max(fg) + .01, label = paste("N =", N)), hjust = "left")
-  print(p)
+  p <- p + geom_text(aes(x = 0, y= max(fg) + .01, label = paste("N =", Ntrain)), hjust = "left")
+
+  suppressWarnings(print(p))
   return(invisible(p))
 }
 

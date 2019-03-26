@@ -142,48 +142,82 @@ getXCIstate <- function(xciObj){
   return(ret)
 }
 
+.betaAB <- function(m, theta, mu, sigma2){
+  if(!is.null(m) & !is.null(theta)){
+    alpha <- m*(theta-2)+1
+    beta <- (1-m)*(theta-2)+1
+  } else if(!is.null(mu) & !is.null(sigma2)){
+    v <- (mu * (1-mu))/sigma2 - 1
+    alpha <- mu*v
+    beta <- (1-mu)*v
+  } else{
+    stop("At least one pair of m/theta or mu/sigma2 must be specified")
+  }
+  return(c(alpha, beta))
+}
+.betaMT <- function(alpha, beta, mu, sigma2){
+  if(!is.null(alpha) & !is.null(beta)){
+    theta <- alpha + beta
+    m <- (alpha-1)/(theta-2)
+  } else if(!is.null(mu) & !is.null(sigma2)){
+  } else{
+    stop("At least one pair of alpha/beta or mu/sigma2 must be specified")
+  }
+  return(c(m, theta))
+}
+.betaMV <- function(alpha, beta, m, theta){
+  if(!is.null(alpha) & !is.null(beta)){
+    mu <- alpha/(alpha + beta)
+    sigma2 <- (alpha*beta)/((alpha+beta)^2 * (alpha+beta+1))
+  } else if(!is.null(m) & !is.null(theta)){
+    mu <- m*(theta-2)+1/theta
+    # TODO: Simplify this
+    sigma2 <- ((m*(theta-2)+1) * ((1-m)*(theta-2)+1)) / # a*b
+      (( m*(theta-2)+1 + (1-m)*(theta-2)+1)^2 *  # (a+b)^2
+         ( m*(theta-2)+1 + (1-m)*(theta-2)+1 + 1))  # (a+b+1)
+  } else{
+    stop("At least one pair of alpha/beta or m/theta must be specified")
+  }
+  return(c(mu, sigma2))
+}
+
 
 #' Converting beta distribution parameters
 #'
-#' These functions convert parameter values between different beta distribution parametrization
+#' Convert parameter values between different beta distribution parametrization
 #'
 #' @param alpha First shape parameter
 #' @param beta Second shape parameter
 #' @param m Mode
 #' @param theta Concentration
 #' @param mean Mean
-#' @param var Variance
+#' @param sigma2 Variance
 #'
 #' @return A \code{list} with the two new parameters.
 #'
 #' @examples
 #'
-#' betaMV(1, 1)
-#' betaMV(1, 10)
-#' betaMV(10, 10)
-#' # In a data.table (such as XCIR output)
-#' dt <- data.table(it = LETTERS[1:3], a_est = c(1, 1, 10), b_est = c(1, 10, 10))
-#' dt[, `:=`(c("mu", "s2"), betaMV(a_est, b_est))]
-#'
+#' betaParam(alpha = 5, beta = 5)
+#' betaParam(m = 0.5, theta = 10)
+#' betaParam(mu = 0.5, sigma2 = 0.02272727)
 #'
 #' @rdname BetaConversion
 #' @export
-betaAB <- function(mean, var){
-  alpha <- (mu^2*(1-mu))/var - 1
-  beta <- (mu*(1-mu)^2)/var - 1
-  return(list(alpha, beta))
-}
-#' @rdname BetaConversion
-#' @export
-betaMC <- function(alpha, beta){
-  theta <- alpha+beta
-  m <- (alpha-1)/(theta-2)
-  return(list(m, theta))
-}
-#' @rdname BetaConversion
-#' @export
-betaMV <- function(alpha, beta){
-  mu <- alpha/(alpha + beta)
-  var <- (alpha*beta)/((alpha+beta)^2 * (alpha+beta+1))
-  return(list(mu, var))
+betaParam <- function(alpha = NULL, beta = NULL, m = NULL, theta = NULL, mu = NULL, sigma2 = NULL){
+  if(is.null(alpha)){
+    ab <- .betaAB(m, theta, mu, sigma2)
+    alpha <- ab[1]
+    beta <- ab[2]
+  }
+  if(is.null(m)){
+    mt <- .betaMT(alpha, beta, mu, sigma2)
+    m <- mt[1]
+    theta <- mt[2]
+  }
+  if(is.null(mu)){
+    mv <- .betaMV(alpha, beta, m, theta)
+    mu <- mv[1]
+    sigma2 <- mv[2]
+  }
+  return(c(alpha, beta, m, theta, mu, sigma2))
 }

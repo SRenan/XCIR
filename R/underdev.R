@@ -51,38 +51,12 @@ fisherCombine <- function(newcalls, maxSNP = 4, method = "fisher"){
 }
 
 
-
 getZ <- function(xcirout){
   Zdt <- copy(xcirout)
   Zdt[, mup := mean(p_value), by = "GENE"]
   Zdt[, sdp := sd(p_value), by = "GENE"]
   Zdt[, Z := (p_value - mup)/sdp]
 }
-
-
-# TODO:
-# - Make sure it works with data.table
-# - Add 1 to 1 subfunctions ?
-#' @export
-betaParam <- function(alpha = NULL, beta = NULL, m = NULL, theta = NULL, mu = NULL, sigma2 = NULL){
-  if(!is.null(alpha)){
-  } else if(!is.null(m)){
-    alpha <- m*(theta-2)+1
-    beta <- (1-m)*(theta-2)+1
-  } else if(!is.null(mu)){
-    v <- (mu * (1-mu))/sigma - 1
-    alpha <- mu*v
-    beta <- (1-mu)*v
-  } else{
-    stop("At least one pair of parameters must be specified")
-  }
-  return(list(alpha, beta, m, theta, mu, sigma2))
-}
-
-# LRT:
-#  H0: Gene is silenced
-#  H1u0: Gene is escape or silenced
-#
 
 
 ### Unconstrained optimization with new parameter transformation
