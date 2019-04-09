@@ -10,6 +10,10 @@
 #' @details
 #' For phased samples, use \code{readXVcf}.
 #'
+#' @return A \code{data.table} of allele specific read counts.
+#'
+#' @example inst/examples/workflow.R
+#'
 #' @importFrom S4Vectors unstrsplit
 #' @export
 readRNASNPs <- function(vcf_file){
@@ -44,22 +48,20 @@ readRNASNPs <- function(vcf_file){
 }
 
 
-# Read phenotype
-readPhenotypes <- function(vcf_file){
-  geno <- fread(vcf_file, skip = 40) #fread gets messed up if it sees lines without strings b4 lines with strings (header is actually line 54)
-  geno <- geno[nchar(REF) == 1 & nchar(ALT) == 1] #Remove the indels
-  geno <- geno[FILTER == "PASS"]
-
-  mvars <- names(geno)[10:ncol(geno)]
-  geno <- geno[, c("#CHROM", "POS", "REF", "ALT", mvars), with = F]
-  mg <- melt(geno, measure.vars = mvars)
-  mg <- melt(geno, id.vars = c("#CHROM", "POS", "REF", "ALT"))
-  mg <- mg[!value %in% c("0|0", "1|1")]
-  mg <- mg[!value %in% c("0", "1")] # Another way of encoding homozygous SNPs
-}
-
+#' Read VCF file
+#'
+#' Read ASE from a VCF file
+#'
+#' @param vcf_file A \code{character}. The path to a vcf file.
+#'  The file must have the REF, ALT and AD fields.
+#'
+#' @return A \code{data.table} of allele specific read counts.
+#'
+#' @example inst/examples/workflow.R
+#'
+#' @importFrom S4Vectors unstrsplit
 #' @export
-readVCF4 <- function(vcf_file, merge_alts = F){
+readVCF4 <- function(vcf_file){
   vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("AD"))
   vcf <- readVcf(vcf_file, genome = "chrX", param = vcf_param)
   alts <- as.character(unstrsplit(alt(vcf)))
@@ -119,19 +121,4 @@ readVCF4 <- function(vcf_file, merge_alts = F){
   dt[, CHROM := chr]
   dt[, POS := pos]
   return(dt)
-}
-
-#' @importFrom stringr str_extract
-#' @export
-read_AD_format <- function(file, het_cutoff){
-  fr <- fread(file)
-  re <- "^\\d+,\\d+" #First two numerics separated by a comma (ignore additional ALTs which are always 0 AFAIK)
-  mfr <- melt(fr, id.vars = c("CHROM", "POS"), variable.name = "sample", value.name = "AD")
-  mfr[, ADs := str_extract(AD, re)] #102 seconds
-  mfr <- mfr[ADs != "0,0"]
-  mfr[, AD_hap2 := as.numeric(gsub("^.*,", "", ADs))]
-  mfr <- mfr[AD_hap2 != 0]
-  mfr[, AD_hap1 := as.numeric(gsub(",.*$", "", ADs))]
-  het <- mfr[ AD_hap1 != 0 & AD_hap2 != 0]
-  return(het)
 }

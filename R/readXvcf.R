@@ -34,6 +34,9 @@
 #' estimation using sequence reads. American Journal of Human Genetics 93 (4)
 #'  787-696.
 #'
+#' @example inst/examples/workflow.R
+#'
+#'
 #' @importFrom VariantAnnotation ScanVcfParam readVcf geno alt ref
 #' @importFrom IRanges CharacterList
 #' @importFrom Biostrings unstrsplit

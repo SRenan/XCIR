@@ -14,9 +14,13 @@
 #' Biology (2013). doi:10.1186/gb-2013-14-11-r122. Intersect is a more
 #' stringent list that takes the intersection of both Carrel and Cotton's lists.
 #'
-#' @seealso \code{betaBinomXI}
 #' @return A \code{character} vector of gene names.
 #'
+#' @examples
+#' xcig <- readXCI()
+#' xcig <- readXCI("cotton")
+#'
+#' @seealso \code{betaBinomXI}
 #' @export
 readXCI <- function(xciGenes = NULL){
   if(!is.null(xciGenes)){
@@ -47,8 +51,8 @@ readXCI <- function(xciGenes = NULL){
   nsamples <- length(unique(data$sample))
   if(n < 1 | n > nsamples)
     stop(paste("n should be a number between 1 and", nsamples))
-  skewed_samples <- as.character(data[, median(pmin(AD_hap1, AD_hap2)/(AD_hap1+AD_hap2), na.rm = T),
-                                      by = sample][order(V1)][1:n, sample])
+  skewed_samples <- as.character(data[, median(pmin(AD_hap1, AD_hap2)/(AD_hap1+AD_hap2), na.rm = TRUE),
+                                      by = sample][order(V1)][seq_len(n), sample])
   return(skewed_samples)
 }
 
@@ -83,40 +87,27 @@ plot_escape_fraction <- function(ai, cutoff = .1){
   fai <- fai[ai < cutoff, Ninac := .N, ]
 }
 
-#' Genes of interest
+
+#' Sample estimates
 #'
-#' These genes are particularly relevant to the biology of XCI.
+#' Return sample specific information from XCIR results
 #'
-#' @return A \code{character} vector of gene symbols.
-#' @export
+#' @param bb_table A \code{data.table}. The table returned by \code{betaBinomXI}.
 #'
-GOI <- function(){
-  # Set of X/XCI relavant genes and aliases
-  goi <- character()
-  # DXZ4 is at the hinge that separates X into two superdomains
-  goi <- c(goi, "DXZ4", "DANT2")
-  # Genes that were found to be tumor suppressors in Male biased cancers (hypothesized
-  # to be escaping, thus requiring 2 mutations in female to disrupt suppressing activity)
-  goi <- c(goi, "ATRX", "KDM5C", "KDM6A", "DDX3X", "MAGEC3", "CNKSR2") # ASHG17 A.A. Lane, ATRX has never been found to escape so far. All others have.
-
-  # Genes involved in XCI
-  goi <- c(goi, "XIST", "TSIX", "TSIX|XIST", "FIRRE", "CTCF") # FIRRE helps maintain methylation on the Xi
-
-  #SLE associated genes
-  goi <- c(goi, "CXorf21", "IRAK1", "MECP2", "PRPS2")
-
-  return(goi)
-}
-
+#' @return A \code{data.table} with one entry per sample and information
+#'  regarding skewing and model fitting.
+#'
+#' @example inst/examples/betaBinomXI.R
+#'
 #' @export
 sample_clean <- function(bb_table){
   clean_cols <- c("sample", "model", "f", "a_est", "b_est")
-  ret <- unique(bb_table[, clean_cols, with = F])
+  ret <- unique(bb_table[, clean_cols, with = FALSE])
   return(ret)
 }
 xcir_clean <- function(bb_table){
   clean_cols <- c("sample", "GENE", "AD_hap1", "AD_hap2", "f", "p_value", "pbb")
-  ret <- unique(bb_table[, clean_cols, with = F])
+  ret <- unique(bb_table[, clean_cols, with = FALSE])
   return(ret)
 }
 
@@ -128,11 +119,13 @@ xcir_clean <- function(bb_table){
 #'
 #' @return A \code{data.table} with genes and their XCI-state.
 #'
+#' @example inst/examples/betaBinomXI.R
+#'
 #' @export
 getXCIstate <- function(xciObj){
   if(!"status" %in% names(xciObj))
     xciObj[, status := ifelse(p_value < 0.05, "E", "S")]
-  out <- setkey(xciObj, GENE, status)[, .N, by = c("GENE", "status")][CJ(GENE, status, unique = T), allow.cartesian = T][is.na(N), N := 0L]
+  out <- setkey(xciObj, GENE, status)[, .N, by = c("GENE", "status")][CJ(GENE, status, unique = TRUE), allow.cartesian = TRUE][is.na(N), N := 0L]
   out[, Ntot := sum(N), by = "GENE"]
   outE <- out[status == "E"]#
   outE[, pe := N/Ntot]
@@ -190,7 +183,7 @@ getXCIstate <- function(xciObj){
 #' @param beta Second shape parameter
 #' @param m Mode
 #' @param theta Concentration
-#' @param mean Mean
+#' @param mu Mean
 #' @param sigma2 Variance
 #'
 #' @return A \code{list} with the two new parameters.

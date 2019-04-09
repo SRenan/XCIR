@@ -201,6 +201,8 @@ plot_status_fraction <- function(xi, alpha = .05, inference = "asymptotic",
 #' The CMH will only be computed using genes that have at least 1 sample for
 #' each outcome.
 #'
+#' @value A \code{list} with the test statistic and p-value for each gene.
+#'
 #' @seealso \code{\link{betaBinomXI}}
 #'
 #' @export
@@ -266,3 +268,30 @@ summescape <- function(table, fmax = 0.5, alpha = 0.05){
   summ[, esc := E/N]
   return(summ[])
 }
+
+
+#' Genes of interest
+#'
+#' These genes are particularly relevant to the biology of XCI.
+#'
+#' @return A \code{character} vector of gene symbols.
+#' @export
+#'
+GOI <- function(){
+  # Set of X/XCI relavant genes and aliases
+  goi <- character()
+  # DXZ4 is at the hinge that separates X into two superdomains
+  goi <- c(goi, "DXZ4", "DANT2")
+  # Genes that were found to be tumor suppressors in Male biased cancers (hypothesized
+  # to be escaping, thus requiring 2 mutations in female to disrupt suppressing activity)
+  goi <- c(goi, "ATRX", "KDM5C", "KDM6A", "DDX3X", "MAGEC3", "CNKSR2") # ASHG17 A.A. Lane, ATRX has never been found to escape so far. All others have.
+
+  # Genes involved in XCI
+  goi <- c(goi, "XIST", "TSIX", "TSIX|XIST", "FIRRE", "CTCF") # FIRRE helps maintain methylation on the Xi
+
+  #SLE associated genes
+  goi <- c(goi, "CXorf21", "IRAK1", "MECP2", "PRPS2")
+
+  return(goi)
+}
+

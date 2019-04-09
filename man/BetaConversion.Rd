@@ -16,9 +16,9 @@ betaParam(alpha = NULL, beta = NULL, m = NULL, theta = NULL,
 
 \item{theta}{Concentration}
 
-\item{sigma2}{Variance}
+\item{mu}{Mean}
 
-\item{mean}{Mean}
+\item{sigma2}{Variance}
 }
 \value{
 A \code{list} with the two new parameters.

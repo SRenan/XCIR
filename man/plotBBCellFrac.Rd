@@ -4,8 +4,8 @@
 \alias{plotBBCellFrac}
 \title{Plot cell fraction estimates}
 \usage{
-plotBBCellFrac(xci_dt, xcig = NULL, gene_names = "", color_col = NULL,
-  xist = T)
+plotBBCellFrac(xci_dt, xcig = NULL, gene_names = "",
+  color_col = NULL, xist = TRUE)
 }
 \arguments{
 \item{xci_dt}{A \code{data.table}. The data to be used for the estimate
@@ -19,6 +19,15 @@ further than 20% away from the estimated skewing will be annotated, if set
 to "all", all genes will be named. Set to "none" to remove all annotations.
 Alternately, a \code{character} vector can be passed to annotate specific
 genes of interest.}
+
+\item{color_col}{A \code{character}. One of the columns of \code{xci_dt} can
+be used to color genes.}
+
+\item{xist}{A \code{logical}. Set to TRUE to display XIST in addition to
+the training genes.}
+}
+\value{
+The plot object in class \code{ggplot}.
 }
 \description{
 Plot cell fraction estimates from list of known XCI genes

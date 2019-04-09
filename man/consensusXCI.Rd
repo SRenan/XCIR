@@ -4,7 +4,7 @@
 \alias{consensusXCI}
 \title{XCI consensus}
 \usage{
-consensusXCI(redownload = F, simple = T)
+consensusXCI(redownload = FALSE, simple = TRUE)
 }
 \arguments{
 \item{redownload}{A \code{logical}. If set to TRUE, the original supplementary
@@ -13,10 +13,17 @@ file is redownloaded from PMC.}
 \item{simple}{A \code{logical}. If set to TRUE, minimal information is returned,
 only for genes with an available XCIR classification.}
 }
+\value{
+A \code{data.table} with the annotated X-linked genes.
+}
 \description{
 Read consensus & XCIR calls for all X-linked genes
 }
 \details{
 The consensus is as published in Supplementary table S1 of
 Balaton et al. (Biol Sex Differ. 2015). doi: 10.1186/s13293-015-0053-7
+}
+\examples{
+consensusXCI(simple = TRUE)
+
 }
