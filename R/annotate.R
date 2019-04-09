@@ -46,9 +46,29 @@ mart_genes <- function(release = "hg19", chr = "X"){
   return(p2g)
 }
 
+#' Annotate
+#'
+#' Map positions of SNPs to genes extracted from biomaRt
+#'
+#' @param xciObj A \code{data.table}. The data to be annotated must contain
+#'  at least the 4 columns 'GENE', 'POS', 'AD_hap1', 'AD_hap2'. Additional
+#'  columns will be preserved.
+#' @param read_count_cutoff A \code{numeric}. Keep only SNPs that have at least
+#'  that many reads.
+#' @param het_cutoff A \code{numeric}. Keep only SNPs that have at least that
+#'  many reads on each allele.
+#' @param release A \code{character}. Genome release name. Valid releases are
+#'  "hg19", "hg38".
+#' @param verbose A \code{logical}. If set to TRUE, print additional information.
+#'
+#' @return A \code{data.table}. The input table annotated with gene symbols
+#'  and filtered for read counts.
+#'
+#' @example inst/examples/workflow.R
+#'
 #' @export
 annotateX <- function(xciObj, read_count_cutoff = 20, het_cutoff = 3,
-                      release = "hg19", verbose = F){
+                      release = "hg19", verbose = FALSE){
   # 1) Extract the genes
   egX <- mart_genes(release)[GENE != ""]
   egX <- egX[gene_biotype %in% c("protein_coding", "pseudogene", "lincRNA")] #Remove miRNA, rRNA,
@@ -64,14 +84,18 @@ annotateX <- function(xciObj, read_count_cutoff = 20, het_cutoff = 3,
   #2) Map positions to the genes
   # Filtering first to make everything faster
   xciAnno <- xciObj[AD_hap1 + AD_hap2 >= read_count_cutoff & AD_hap1 >= het_cutoff & AD_hap2 >= het_cutoff]
+  if(!"CHROM" %in% names(xciAnno)){
+    warning("'CHROM' not found in the object, assuming all entries are X-linked.")
+    xciAnno[, CHROM := "X"]
+  }
   xciAnno[, ID := paste(CHROM, POS, sep = ":")]
-  p2gX <- pos2gene(xciAnno[, list(ID, POS)], egX)
+  p2gX <- .pos2gene(xciAnno[, list(ID, POS)], egX)
   p2gX[, GENE_pos := (start+end)/2] #This can be useful for plots to order genes
   xciAnno <-  merge(p2gX[, list(ID, GENE, GENE_pos)], xciAnno, by = "ID") #The merge naturally removes intergenic SNPs
   return(xciAnno)
 }
 
-pos2gene <- function(target, interval){
+.pos2gene <- function(target, interval){
   pos <- unique(copy(target)) #Still need to copy b/c if target is already unique we'll overwrite
   gene <- copy(interval)
   # TODO:
@@ -143,9 +167,17 @@ pos2gene <- function(target, interval){
 #' that pass the cutoff on both the reference and alternate alleles. This
 #' may lead to samples with 0 counts on either allele but will prevent removing
 #' heterozygous sites with lower coverage (especialliy in skewed samples).
+#' \code{seqm_anno} will call \code{annotatePlain} from the \code{seqminer}
+#' package. For convenience, \code{seqminer}'s necessary annotation sources can
+#' be copied into \code{XCIR}'s extdata folder. See ?annotatePlain for more
+#' information.
 #'
 #' @return A \code{data.table} object that contains allelic coverage, genotype
 #' and annotations at the covered SNPs.
+#'
+#' @example inst/examples/workflow.R
+#'
+#' @seealso \code{annotatePlain}
 #'
 #' @export
 addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
@@ -196,9 +228,15 @@ addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
 #' The consensus is as published in Supplementary table S1 of
 #' Balaton et al. (Biol Sex Differ. 2015). doi: 10.1186/s13293-015-0053-7
 #'
+#' @return A \code{data.table} with the annotated X-linked genes.
+#'
+#' @examples
+#' consensusXCI(simple = TRUE)
+#'
 #' @importFrom readxl read_xlsx
+#' @importFrom utils download.file
 #' @export
-consensusXCI <- function(redownload = F, simple = T){
+consensusXCI <- function(redownload = FALSE, simple = TRUE){
   if(redownload){
     tmp = tempfile()
     download.file("https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4696107/bin/13293_2015_53_MOESM1_ESM.xlsx", destfile = tmp, mode = "wb")
@@ -207,12 +245,13 @@ consensusXCI <- function(redownload = F, simple = T){
     cons <- data.table(read_xlsx(system.file("extdata/13293_2015_53_MOESM1_ESM.xlsx", package = "XCIR")))
   }
   setnames(cons, tolower(chartr(" ", "_", names(cons))))
-  geu <- fread(system.file("extdata/GEU_xcir_181122_flag.tsv", package = "XCIR"))
-  geuall <- getXCIstate(geu)
-  geuskew <- getXCIstate(geu[f < .25])
-  geus <- merge(geuall, geuskew, by = "GENE", suffixes = c("_all", "_skew"), all.x = T)
-  cons <- merge(geus, cons, by.x = "GENE", by.y = "gene_name", all.y = T)
-  cons <- cons[, c(names(cons)[1:8], "y_homology"), with = F]
+  # geu <- fread(system.file("extdata/GEU_xcir_181122_flag.tsv", package = "XCIR"))
+  # geuall <- getXCIstate(geu)
+  # geuskew <- getXCIstate(geu[f < .25])
+  # geus <- merge(geuall, geuskew, by = "GENE", suffixes = c("_all", "_skew"), all.x = TRUE)
+  geus <- fread(system.file("extdata/GEU_xcistate_181122.tsv", package = "XCIR"))
+  cons <- merge(geus, cons, by.x = "GENE", by.y = "gene_name", all.y = TRUE)
+  cons[, c(names(geus), "balaton_consensus_calls", "y_homology"), with = FALSE]
   if(simple)
     cons <- cons[!is.na(XCIstate_skew)]
   return(cons)

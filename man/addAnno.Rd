@@ -4,8 +4,8 @@
 \alias{addAnno}
 \title{Read annotation file}
 \usage{
-addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 20, het_cutoff = 3,
-  filter_pool_cutoff = 3, anno_file = NULL)
+addAnno(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
+  het_cutoff = 3, filter_pool_cutoff = 3, anno_file = NULL)
 }
 \arguments{
 \item{dt}{A \code{data.table} object.}
@@ -41,4 +41,38 @@ If the samples all have the same genotype (e.g: technical replicates),
 that pass the cutoff on both the reference and alternate alleles. This
 may lead to samples with 0 counts on either allele but will prevent removing
 heterozygous sites with lower coverage (especialliy in skewed samples).
+\code{seqm_anno} will call \code{annotatePlain} from the \code{seqminer}
+package. For convenience, \code{seqminer}'s necessary annotation sources can
+be copied into \code{XCIR}'s extdata folder. See ?annotatePlain for more
+information.
+}
+\examples{
+# Example workflow for documentation
+
+vcff <- system.file("extdata/AD_example.vcf", package = "XCIR")
+# Reading functions
+vcf <- readRNASNPs(vcff)
+\dontrun{
+vcf <- readXVcf(vcff)
+}
+vcf <- readVCF4(vcff)
+
+# Annotation functions
+# Using seqminer (requires additional annotation files)
+\dontrun{
+anno <- addAnno(vcf)
+}
+# Using biomaRt
+anno <- annotateX(vcf)
+# Do not remove SNPs with 0 count on minor allele
+anno0 <- annotateX(vcf, het_cutoff = 0)
+
+# Summarise read counts per gene
+# Assuming data is phased, reads can be summed across genes.
+genic <- getGenicDP(anno, highest_expr = FALSE)
+# Unphased data, select SNP with highest overall expression.
+genic <- getGenicDP(anno, highest_expr = TRUE)
+}
+\seealso{
+\code{annotatePlain}
 }

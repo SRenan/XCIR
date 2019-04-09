@@ -6,7 +6,7 @@
 \usage{
 betaBinomXI(genic_dt, model = "AUTO", plot = FALSE, hist = FALSE,
   flag = 0, xciGenes = NULL, a0 = NULL, optimizer = "nlminb",
-  method = NULL, limits = TRUE, debug = F)
+  method = NULL, limits = TRUE, debug = FALSE)
 }
 \arguments{
 \item{genic_dt}{A \code{data.table}. The table as outputted by \code{getGenicDP}.}
@@ -40,6 +40,12 @@ when it is the selected \code{optimizer}.}
 constrained. Using upper bounds on the probability of sequencing error and
 escape in the training set ensures that the dominant mixture represents the
 skewing for inactivated genes.}
+
+\item{debug}{A \code{logical}. If set to TRUE, information about each iteration
+will be printed (Useful to identify problematic samples).}
+}
+\value{
+A \code{data.table} with an entry per sample and per gene.
 }
 \description{
 Fit a mixture model to estimate mosaicism and XCI-escape.
@@ -57,6 +63,28 @@ nothing is done. If set to 1, the model selection will avoid flagged models
 (will favor parcimonious models).
 If set to 2, calls for which the best selected model had convergence issue
 will be removed.
+}
+\examples{
+library(data.table)
+# Simulated data
+dtf <- system.file("extdata/data2_vignette.tsv", package = "XCIR")
+dt <- fread(dtf)
+xcigf <- system.file("extdata/xcig_vignette.txt", package = "XCIR")
+xcig <- readLines(xcigf)
+# Run all models on the data
+all <- betaBinomXI(dt, xciGenes = xcig)
+# Simple BetaBinomial model and show histogram of skewing
+bb <- betaBinomXI(dt, xciGenes = xcig, model = "BB", hist = TRUE)
+
+# Plotting fits
+stoshow <- paste0("sample", c(1, 11, 31, 40)) #interesting samples
+plotQC(all[sample \%in\% stoshow], xcig = xcig)
+
+# Summarizing results
+# Sample information
+samps <- sample_clean(all)
+# Gene-level predictions
+xcistates <- getXCIstate(all)
 }
 \seealso{
 getGenicDP readXCI

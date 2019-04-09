@@ -1,30 +1,131 @@
 ---
-title: "Introduction to XCIR"
 author: "Renan Sauteraud"
 date: "3/7/2018"
-output: html_document
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteIndexEntry{Introduction to XCIR}
 ---
 
 ```{r setup, include=FALSE}
 library(knitr)
-opts_chunk$set(echo = TRUE, message = F)
+opts_chunk$set(echo = TRUE, fig.width = 7, fig.align = "center",
+               message = FALSE, warning = FALSE)
 ```
+
+# Overview
+
+`XCIR`'s pipeline for calling XCI-states at the subject usually involve
+
+1. Reading the data (`readVCF4`, `readRNASNPs`)
+2. Annotating SNPs (`annnotateX`, `addAnno`)
+3. Summarizing information by gene (`getGenicDP`)
+4. Modelling (`betaBinomXI`)
+    a. Skewing estimate
+    b. XCI-calls
+    
+
+# Reading data
+Internally, `XCIR` uses `data.table` for efficient computation and most functions
+in the package will return a `data.table` object. Naturally, `data.frame` are
+accepted as inputs and the conversion of the outputs is trivial.
 
 ```{r}
 library(XCIR)
 library(data.table)
 ```
 
+We load a small dataset of two samples to display the requirements and
+highlight some of the pre-processing functions.
+```{r}
+vcff <- system.file("extdata/AD_example.vcf", package = "XCIR")
+vcf <- readVCF4(vcff)
+head(vcf)
+```
 
-First, we load a simulated example data inlcuded with the package. Read counts
-for allele specific expression (ASE) at heterozygous SNP and skewing based
-on pre-determined mode and overdispersion parameters are simulated.
+This dataset contains the minimum information required to go through the 
+`XCIR` workflow.
+
+The function `readVCF4` is only provided to help extract essential information
+but the data can be loaded through other means as long as allele specific 
+expression is present and both the SNP and sample are clearly identified.
+REF & ALT columns are naturally present in all vcf files
+but can be safely omitted for further processing. 
+
+# Annotating the data
+In order to obtain allele specific expression for the X-linked genes, we first
+need to map SNPs to genes and ensure that they are heterozygous. We provide 
+a function to map SNPs to genes using infromation extracted from ensembl through
+`biomaRt`.
+
+```{r}
+annoX <- annotateX(vcf)
+head(annoX)
+```
+
+This adds a GENE column to the dataset and removes SNPs with a lower totak read 
+count or a read count that is too small on one of the alleles (homozygous SNPs).
+
+
+In some cases, the data may already be filtered for heterozygous SNPs
+(e.g: If genotyping information is also available for the sample). In this 
+case, the minimum read threshold for **both alleles** can be lowered or removed.
+
+```{r}
+annoXgeno <- annotateX(vcf, het_cutoff = 0)
+```
+
+By default, `annotateX` aligns to `hg19`. Other versions can be passed through
+the `release` argument.
+
+Finally, another option for annotations is through the `seqminer` package. For
+more information see `addAnno`'s man page and `annotatePlain` in the seqminer
+manual.
+
+Again, this is provided for convenience but annotations mapping to genes through
+other means is perfectly valid as long as a new GENE column is added to the 
+table.
+
+
+# Summarize by gene
+Now that we have annotated SNPs, we can summarize the counts for each gene
+to make independant calls.
+
+When high quality phasing information is available, SNPs are reliably
+assigned to the correct haplotype and the allele specific counts of all 
+SNPs within a gene can be summed to get a better estimate of the fraction
+of each parental cell (mosaicism).
+```{r genic-phased}
+genic <- getGenicDP(annoX, highest_expr = TRUE)
+```
+
+When this isn't the case, we can only safely use one SNP. Therefore, we limit
+our data to the most highly expressed SNP in each gene.
+```{r genic-unphased}
+genic <- getGenicDP(annoX, highest_expr = FALSE)
+```
+
+# Skewing estimates & XCI-escape inference
+
+For this section, we load a simulated example inlcuded with the package. 
+Read counts for allele specific expression (ASE) at heterozygous SNP and skewing
+based on pre-determined mode and overdispersion parameters are simulated. The 
+list of training genes is included.
 ```{r}
 data <- fread(system.file("extdata/data2_vignette.tsv", package = "XCIR"))
 xcig <- readLines(system.file("extdata/xcig_vignette.txt", package = "XCIR"))
 ```
 
-## Skewing estimates & XCI-escape inference
+```{r}
+head(data)
+```
+
+The data presented here contains the minimum necessary information to start
+imediately at the modelling step.
+
+Raw data can be read from a VCF file using `readVCF4`. The only requirements 
+being that the allelic depth (AD) field should be recorded in the VCF.
+
 
 The main function of the package `betaBinomXI` allows to fit a simple beta-binomial
 distribution to the expression of genes in the training set.
@@ -40,22 +141,70 @@ XCI-escape for each gene in each sample.
 In this example, the training set contains artificial sequencing errors in some of the samples, 
 such that a simple beta-binomial may not be the best choice to fit the training data.
 
-The `plotBBCellFrac` function plots the estimated skewing along with the observed
+The `plotQC` function plots the estimated skewing along with the observed
 allele specific expression fraction in the training genes. 
 
 It can be used to spot outliers (such as sequencing errors or escape genes in
 the training set) to use a better fitting model.
 ```{r}
-plotBBCellFrac(bb[sample == "sample36"], xcig = xcig)
+plotQC(bb[sample == "sample36"], xcig = xcig)
 s36 <- data[sample == "sample36"]
 ```
 
+For example, looking at the QC plot for the sample above, we observe that a
+few training genes have a suspiciously low $f_g$ (i.e: very highly skewed). 
+This is often due to sequencing error making an homozygous SNP appear as 
+heterozygous.
+
 Here, we let the AIC based model selection procedure select the best fitting
-model.
+model for that sample.
 ```{r}
-s36fit <- betaBinomXI(s36, model = "AUTO", xciGenes = xcig, plot = T)
+s36fit <- betaBinomXI(s36, model = "AUTO", xciGenes = xcig, plot = TRUE)
 ```
 
-The software selected the "MM" model, which is a mixture model with a Beta-binomial
-component for the true heterozygous SNPs and a binomial mixture to fit the 
-sequencing errors.
+The function correctly identified the outliers and selected the "MM" model,
+which is a mixture model with a Beta-binomial component for the true 
+heterozygous SNPs and a binomial mixture to fit the sequencing errors.
+
+This can naturally be applied to the full dataset for subject specific model
+selection.
+
+```{r}
+auto <- betaBinomXI(data, xciGenes = xcig, model = "AUTO")
+```
+
+The returned table contains a skewing estimate **f** for every subject and
+a p-value for XCI-escape test for each sample/gene combination.
+
+It is then trivial to annotate the XCI status for each gene based on the selected
+significance threshold.
+```{r}
+auto[, status := ifelse(p_value < 0.05, "E", "S")]
+auto[, .N, by = "status"]
+```
+
+## Helpers
+The table returned by `betaBinomXI` is comprehensive. In order to summarize 
+results at the subject level, `sample_clean` returns informations
+relevant to each sample, such as estimated skew and the model used. 
+```{r}
+sc <- sample_clean(auto)
+head(sc)
+```
+
+Although one of `XCIR`'s major strength is in its ability to make individual
+level calls, it can be of interest to look at the classification of X-linked
+genes in the entire dataset.
+
+For every gene in the dataset, `getXCIstate` reports the number of samples 
+where a call was made (Ntot), the percentage of them in which it escaped (pe) 
+and an overall classification based on the following cutoffs 
+
+- pe $\leq$ .25 $\rightarrow$ Silenced (S)
+- .25 < pe < .75  $\rightarrow$ Variable escape (VE)
+- pe $\geq$ .75 $\rightarrow$ Escape (E)
+
+```{r}
+xcis <- getXCIstate(auto)
+head(xcis)
+```

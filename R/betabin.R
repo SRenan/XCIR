@@ -24,6 +24,9 @@
 #'  constrained. Using upper bounds on the probability of sequencing error and
 #'  escape in the training set ensures that the dominant mixture represents the
 #'  skewing for inactivated genes.
+#' @param debug A \code{logical}. If set to TRUE, information about each iteration
+#'  will be printed (Useful to identify problematic samples).
+#'
 #'
 #' @details
 #' The model determines the number of components used in the mixture model. By
@@ -39,12 +42,16 @@
 #' If set to 2, calls for which the best selected model had convergence issue
 #' will be removed.
 #'
+#' @return A \code{data.table} with an entry per sample and per gene.
+#'
+#' @example inst/examples/betaBinomXI.R
+#'
 #' @seealso getGenicDP readXCI
 #' @export
 betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
                         flag = 0, xciGenes = NULL, a0 = NULL,
                         optimizer = "nlminb", method = NULL, limits = TRUE,
-                        debug = F){
+                        debug = FALSE){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
@@ -97,7 +104,7 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
   dt[, var_fg := var_fg/tot^2] # Because we want the variance for the fraction, not the variance for the counts
   dt[, t := (fg-f)/sqrt(var_fg)] #Test statistic
   dt[, pbb := pbb(dp1, tot, a_est, b_est, type = "midp"), by = c("GENE", "sample")]
-  dt[, p_value := pnorm(t, lower.tail = F)]
+  dt[, p_value := pnorm(t, lower.tail = FALSE)]
 
   #tau is the Xi expression
   dt[, tau := (f-fg)/(2*f-1)]
@@ -165,14 +172,14 @@ pbb <- function(x, n, a, b, type = "midp"){ #p-value for exact inference
     return(0)
   if(type == "gt"){
     from <- x+1
-    sump <- sum(dbb(from:n, n, a, b), na.rm = T)
+    sump <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
   } else if(type == "geq"){
     from <- x
-    sump <- sum(dbb(from:n, n, a, b), na.rm = T)
+    sump <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
   } else if(type == "midp"){
     from <- x+1
     t0 <- dbb(x, n, a, b)
-    t1 <- sum(dbb(from:n, n, a, b), na.rm = T)
+    t1 <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
     sump <- .5*t0 + t1
   } else{
     stop("Type should be one of 'gt', 'geq', 'midp'")
@@ -183,7 +190,8 @@ pbb <- function(x, n, a, b, type = "midp"){ #p-value for exact inference
 ################################################################################
 # Beta-binomial model:
 
-BB <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, debug = F){
+BB <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
+               limits = FALSE, debug = FALSE){
   dt <- copy(full_dt)
   samples <- unique(dt_xci$sample)
   if(is.null(a0)){
@@ -218,8 +226,8 @@ BB <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, 
     }
     message <- res_optim$message
     message <- ifelse(is.null(message), "", message)
-    dt[sample == sample_i, a_est := exp(res_optim$par[1])]
-    dt[sample == sample_i, b_est := exp(res_optim$par[2])]
+    dt[sample == sample_i, a_est := exp(res_optim$par[1]) + 1]
+    dt[sample == sample_i, b_est := exp(res_optim$par[2]) + 1]
     dt[sample == sample_i, model := "BB"]
     dt[sample == sample_i, k := length(res_optim$par)]
     dt[sample == sample_i, logL := res_optim[[negLogLname]]] #-logL
@@ -232,17 +240,17 @@ BB <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, 
   return(dt)
 }
 .logL_BB <- function(a, dp1, dp){
-  a1 <- exp(a[1])
-  b1 <- exp(a[2])
-  logLbb <- sum(ldbb(dp1,dp,a1,b1)*(-1), na.rm = T)
-  # logLbb <- sum(log(dbb(dp1,dp,a1,b1))*(-1), na.rm = T)
+  a1 <- exp(a[1]) + 1
+  b1 <- exp(a[2]) + 1
+  logLbb <- sum(ldbb(dp1,dp,a1,b1)*(-1), na.rm = TRUE)
   return(logLbb)
 }
 ################################################################################
 # Mixture models:
 
 # 1 Binom for sequencing errors and 1 BB for inactivated heterozygous SNP
-MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, debug = F){
+MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
+               limits = FALSE, debug = FALSE){
   dt <- copy(full_dt)
   samples <- unique(dt_xci$sample)
   if(is.null(a0)){
@@ -277,8 +285,8 @@ MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, 
     message <- res_optim$message
     message <- ifelse(is.null(message), "", message)
 
-    dt[sample == sample_i, a_est := exp(res_optim$par[1])]
-    dt[sample == sample_i, b_est := exp(res_optim$par[2])]
+    dt[sample == sample_i, a_est := exp(res_optim$par[1]) + 1]
+    dt[sample == sample_i, b_est := exp(res_optim$par[2]) + 1]
     dt[sample == sample_i, p_het := exp(res_optim$par[3])/(1 + exp(res_optim$par[3]))]
     dt[sample == sample_i, pi_err := exp(res_optim$par[4])/(1 + exp(res_optim$par[4]))]
     dt[sample == sample_i, model := "MM"]
@@ -293,8 +301,8 @@ MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, 
 }
 
 .logL_MM <- function(a, dp1, dp) {
-  a1 <- exp(a[1]);
-  b1 <- exp(a[2]);
+  a1 <- exp(a[1]) +1
+  b1 <- exp(a[2]) +1
   # Proportions have to be kept as an exponent ratio to avoid issues with boundaries
   p_het <- exp(a[3])/(1+exp(a[3])); # Proba that the SNP is indeed bi-allelic (initial proba = .98)
   pi_err <- 0.001+0.999*exp(a[4])/(1+exp(a[4])); # (initial proba = .02)
@@ -311,7 +319,8 @@ MM <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, 
 
 
 # 1 BB for inactivated SNP and 1 BB for escaped SNP
-MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL, limits = F, roundmax = T, debug = F){
+MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
+                limits = FALSE, roundmax = TRUE, debug = FALSE){
   dt <- copy(full_dt)
   samples <- unique(dt_xci$sample)
   if(is.null(a0)){
@@ -325,6 +334,7 @@ MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
     dp1 <- dt_xci[sample == sample_i, dp1]
     dp  <- dt_xci[sample == sample_i, tot]
     Nxcig <- dt_xci[sample == sample_i, .N]
+    err <- try({
     if(limits){
       # ai,bi,ae,be > .5 to have a mode
       # p_inac > log(0.75/0.25) 3/4 of the training genes should be inactivated
@@ -364,10 +374,10 @@ MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
       stop("Something went wrong with the estimation of the inactivated mixture proportion")
     }
     # Selecting the right component to get alpha/beta corresponding to the inactivated group
-    a_est_i <- exp(res_optim$par[1])
-    b_est_i <- exp(res_optim$par[2])
-    a_est_e <- exp(res_optim$par[3])
-    b_est_e <- exp(res_optim$par[4])
+    a_est_i <- exp(res_optim$par[1]) +1
+    b_est_i <- exp(res_optim$par[2]) +1
+    a_est_e <- exp(res_optim$par[3]) +1
+    b_est_e <- exp(res_optim$par[4]) +1
     flagi <- message
     fi <- a_est_i/(a_est_i + b_est_i)
     fe <- a_est_e/(a_est_e + b_est_e)
@@ -386,6 +396,21 @@ MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
     } else if(fi > fe){
       flagi <- "MM2: fi>fe"
     }
+    })
+    if(inherits(err, "try-error")){
+      dt[sample == sample_i, a_est := NA]
+      dt[sample == sample_i, b_est := NA]
+      dt[sample == sample_i, p_inac := NA]
+
+      dt[sample == sample_i, pi_escape := NA]
+      dt[sample == sample_i, model := "MM2"]
+      dt[sample == sample_i, k := NA]
+      dt[sample == sample_i, logL := NA] #Actually -logL
+      dt[sample == sample_i, convergence := NA]
+      dt[sample == sample_i, flag := "MM2: Error"]
+      dt[sample == sample_i, AIC := NA]
+      dt[sample == sample_i, Ntrain := Nxcig]
+    } else{
       dt[sample == sample_i, a_est := a_est_i]
       dt[sample == sample_i, b_est := b_est_i]
       dt[sample == sample_i, p_inac := p_inac_i]
@@ -394,21 +419,21 @@ MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
       dt[sample == sample_i, model := "MM2"]
       dt[sample == sample_i, k := length(res_optim$par)]
       dt[sample == sample_i, logL := res_optim[[negLogLname]]] #Actually -logL
-      dt[sample == sample_i, convergence := convergence]
+      dt[sample == sample_i, convergence := res_optim$convergence]
       dt[sample == sample_i, flag := flagi]
       dt[sample == sample_i, AIC := 2*k + 2*logL]
       dt[sample == sample_i, Ntrain := Nxcig]
-    #}
+    }
   }
   return(dt)
 }
 .logL_MM2 <- function(a, dp1, dp) {
   # Inactivated gene from XCI
-  ai <- exp(a[1]);
-  bi <- exp(a[2]);
+  ai <- exp(a[1]) + 1
+  bi <- exp(a[2]) + 1
   # Escape gene in XCI list
-  ae <- exp(a[3])
-  be <- exp(a[4])
+  ae <- exp(a[3]) + 1
+  be <- exp(a[4]) + 1
 
   p_inac <- exp(a[5])/(1+exp(a[5])) #Proba that the gene is indeed inactivated (0.9)
   lpbbi <- ldbb(dp1, dp, ai, bi)
@@ -419,7 +444,8 @@ MM2 <- function(dt_xci, full_dt, a0 = NULL, optimizer = "nlminb", method = NULL,
 }
 
 # 1 BB for inac SNPs 1 BB for escaped SNP and 1 Binom for sequencing err
-MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, limits = F, debug = F){
+MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL,
+                limits = FALSE, debug = FALSE){
   dt <- copy(full_dt)
   samples <- unique(dt_xci$sample)
   if(is.null(a0)){
@@ -483,10 +509,10 @@ MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, 
       #   a_est_e <- exp(res_optim$par[1])
       #   b_est_e <- exp(res_optim$par[2])
       # }
-      a_est_i <- exp(res_optim$par[1])
-      b_est_i <- exp(res_optim$par[2])
-      a_est_e <- exp(res_optim$par[3])
-      b_est_e <- exp(res_optim$par[4])
+      a_est_i <- exp(res_optim$par[1]) + 1
+      b_est_i <- exp(res_optim$par[2]) + 1
+      a_est_e <- exp(res_optim$par[3]) + 1
+      b_est_e <- exp(res_optim$par[4]) + 1
       flagi <- message
       fi <- a_est_i/(a_est_i + b_est_i)
       fe <- a_est_e/(a_est_e + b_est_e)
@@ -507,6 +533,7 @@ MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, 
       dt[sample == sample_i, model := "MM3"]
       dt[sample == sample_i, k := NA]
       dt[sample == sample_i, logL := NA] #Actually -logL
+      dt[sample == sample_i, convergence := NA]
       dt[sample == sample_i, flag := "MM3: Error"]
       dt[sample == sample_i, AIC := NA]
       dt[sample == sample_i, Ntrain := Nxcig]
@@ -534,11 +561,11 @@ MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, 
 
 .logL_MM3 <- function(a, dp1, dp){
   # Inactivated gene from XCI
-  ai <- exp(a[1])
-  bi <- exp(a[2])
+  ai <- exp(a[1]) + 1
+  bi <- exp(a[2]) + 1
   # Escape gene in XCI list
-  ae <- exp(a[3])
-  be <- exp(a[4])
+  ae <- exp(a[3]) + 1
+  be <- exp(a[4]) + 1
 
   if(is.finite(exp(a[5]))){
     p_inac <- exp(a[5])/(1+exp(a[5])) #Proba that the gene is not a training set error
@@ -573,7 +600,7 @@ MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, 
 # Model selection
 .back_sel <- function(modl, criterion = "AIC", flag = 0){
   cols <- Reduce(intersect, lapply(modl, names))
-  modl <- lapply(modl, function(XX){XX[, cols, with = F]})
+  modl <- lapply(modl, function(XX){XX[, cols, with = FALSE]})
   aics <- rbindlist(modl)
   if(flag == 1){# Models where the sample had errors are discarded
     aics <- aics[!grep("^MM", flag)]
@@ -600,6 +627,10 @@ MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, 
 #' to "all", all genes will be named. Set to "none" to remove all annotations.
 #' Alternately, a \code{character} vector can be passed to annotate specific
 #' genes of interest.
+#' @param color_col A \code{character}. One of the columns of \code{xci_dt} can
+#' be used to color genes.
+#' @param xist A \code{logical}. Set to TRUE to display XIST in addition to
+#' the training genes.
 #'
 #' @return NULL
 #'
@@ -608,11 +639,12 @@ MM3 <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL, 
 #' fraction is estimated properly. However, it can be used from the output
 #' of \code{betaBinomXI} to troubleshoot estimation issues.
 #'
+#' @return The plot object in class \code{ggplot}.
+#'
 #' @importFrom ggplot2 element_blank scale_colour_manual facet_wrap
-#' @importFrom ggplot2 geom_point geom_hline theme_bw
-#' @export
-plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = "", color_col = NULL,
-                           xist = T){
+#' @importFrom ggplot2 geom_point geom_text geom_hline theme_bw
+plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = "",
+                           color_col = NULL, xist = TRUE){
   plotfrac <- xci_dt[order(sample)]
   if(!is.null(xcig)){
     xcig <- readXCI(xcig)
@@ -620,7 +652,7 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = "", color_col = NUL
   }
   Nt <- plotfrac[, .N, by = "sample"]
   plotfrac <- merge(plotfrac, Nt, by = "sample")
-  plotfrac[, index := unlist(sapply(Nt[, N], function(x){1:x}))]
+  plotfrac[, index := unlist(sapply(Nt[, N], function(x){seq_len(x)}))]
   plotfrac[, label := ""]
   if(length(gene_names) > 1){
     plotfrac[GENE %in% gene_names, label := GENE]
@@ -662,10 +694,33 @@ plotBBCellFrac <- function(xci_dt, xcig = NULL, gene_names = "", color_col = NUL
   return(invisible(p))
 }
 
+#' Plot QC
+#'
+#' This plot shows QC for skewing estimates
+#'
+#' @param xci_table A \code{data.table}. Data to plot. Should be the results of
+#'  \code{betaBinomXI}, \code{getGenicDP} or one of the annotation functions.
+#' @param xcig A \code{character} vector. The names of the genes in the
+#'  inactivated training set.
+#' @param gene_names A \code{character}. If left blank, only genes that are
+#' further than 20% away from the estimated skewing will be annotated, if set
+#' to "all", all genes will be named. Set to "none" to remove all annotations.
+#' Alternately, a \code{character} vector can be passed to annotate specific
+#' genes of interest.
+#'
+#' @return An invisible plot object.
+#'
+#' @importFrom ggplot2 ggplot aes theme theme_bw element_blank facet_wrap
+#'  geom_point geom_hline geom_text
+#'
+#' @example inst/examples/betaBinomXI.R
+#'
 #' @export
 plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
+  sd_f <- f_sd_up <- f_sd_lo <- meanf <- NULL
   # TODO: Order the genes along X OR by their allelic ratio
   # TODO: Add confint based on the distribution: https://stats.stackexchange.com/questions/82475/calculate-the-confidence-interval-for-the-mean-of-a-beta-distribution
+  # TODO: Add the gene names
   plottable <- xci_table[order(sample)]
   plottable[, index := rowid(plottable$sample)]
   plottable[, set := "Test"]
@@ -684,6 +739,7 @@ plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
   p <- p + geom_hline(aes(yintercept = f_sd_lo), lty = "dashed")
   # Plot basic mean for comparison
   p <- p + geom_hline(aes(yintercept = meanf), color = "blue", lty = "dotted")
+  p <- p + geom_text(aes(0,meanf,label = "mean", hjust = -1), colour = "blue")
   # Plot the allelic ratios
   p <- p + geom_point(aes(shape = model, color = set))
   # Handle gene names
@@ -692,7 +748,7 @@ plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
   theme_QC <- theme_bw() + theme(axis.text.x = element_blank(),
                                  axis.ticks.x = element_blank(),
                                  axis.title.x = element_blank())
-  p <- p + facet_wrap(~sample, scale = "free_x") + theme_QC
+  p <- p + facet_wrap(~sample, scales = "free_x") + theme_QC
   # Plot XIST
   p <- p + geom_point(data = xists, aes(x = Ntrain/2, y = fg), color = "red", shape = 4, size = 4)
   # Add training gene count

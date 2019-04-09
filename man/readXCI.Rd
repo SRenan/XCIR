@@ -25,6 +25,11 @@ Cotton, is a list of 294 inactivated genes compiled by Cotton et al. Genome
 Biology (2013). doi:10.1186/gb-2013-14-11-r122. Intersect is a more
 stringent list that takes the intersection of both Carrel and Cotton's lists.
 }
+\examples{
+xcig <- readXCI()
+xcig <- readXCI("cotton")
+
+}
 \seealso{
 \code{betaBinomXI}
 }

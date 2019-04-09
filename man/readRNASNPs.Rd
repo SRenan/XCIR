@@ -9,9 +9,39 @@ readRNASNPs(vcf_file)
 \arguments{
 \item{vcf_file}{A \code{character}. The path to a vcf file.}
 }
+\value{
+A \code{data.table} of allele specific read counts.
+}
 \description{
 Read SNPs from RNA-Seq that have not been phased.
 }
 \details{
 For phased samples, use \code{readXVcf}.
+}
+\examples{
+# Example workflow for documentation
+
+vcff <- system.file("extdata/AD_example.vcf", package = "XCIR")
+# Reading functions
+vcf <- readRNASNPs(vcff)
+\dontrun{
+vcf <- readXVcf(vcff)
+}
+vcf <- readVCF4(vcff)
+
+# Annotation functions
+# Using seqminer (requires additional annotation files)
+\dontrun{
+anno <- addAnno(vcf)
+}
+# Using biomaRt
+anno <- annotateX(vcf)
+# Do not remove SNPs with 0 count on minor allele
+anno0 <- annotateX(vcf, het_cutoff = 0)
+
+# Summarise read counts per gene
+# Assuming data is phased, reads can be summed across genes.
+genic <- getGenicDP(anno, highest_expr = FALSE)
+# Unphased data, select SNP with highest overall expression.
+genic <- getGenicDP(anno, highest_expr = TRUE)
 }
