@@ -4,7 +4,7 @@
 newCalls <- function(xcirout, newdata){
   clean <- sample_clean(xcirout)
   sscols <- c("sample", "CHROM", "POS", "GENE", "ANNO", "AD_hap1", "AD_hap2")
-  newdata <- merge(clean, newdata[, sscols, with = F], by = "sample")
+  newdata <- merge(clean, newdata[, sscols, with = FALSE], by = "sample")
   newdata[, dp1 := pmin(AD_hap1, AD_hap2)]
   newdata[, tot := AD_hap1 + AD_hap2]
 
@@ -14,7 +14,7 @@ newCalls <- function(xcirout, newdata){
   newdata[, var_fg := var_fg/((a_est + b_est)^2 * (a_est + b_est + 1))]
   newdata[, var_fg := var_fg/tot^2] # Because we want the variance for the fraction, not the variance for the counts
   newdata[, t := (fg-f)/sqrt(var_fg)] #Test statistic
-  newdata[, p_value := pnorm(t, lower.tail = F)]
+  newdata[, p_value := pnorm(t, lower.tail = FALSE)]
 
   return(newdata)
 }
@@ -38,14 +38,14 @@ fisherCombine <- function(newcalls, maxSNP = 4, method = "fisher"){
   out[, kcomb := pmin(CNT, maxSNP)]
   if(method == "fisher"){
     out[, X := -2*sum(log(p_value)), by = c("sample", "GENE")]
-    out[, f_value := pchisq(X, df = 2*kcomb, lower.tail = F)]
+    out[, f_value := pchisq(X, df = 2*kcomb, lower.tail = FALSE)]
   } else if(method == "stouffer"){
     out[, Z := sum(qnorm(1 - p_value))/sqrt(kcomb), by = c("sample", "GENE")]
-    out[, z_value := pnorm(Z, 0, kcomb, lower.tail = F)]
+    out[, z_value := pnorm(Z, 0, kcomb, lower.tail = FALSE)]
   } else if(method == "zscore"){
     # Use total read count to weight
     out[, Z := sum(sqrt(tot)*qnorm(1 - p_value))/sqrt(sum(tot)), by = c("sample", "GENE")]
-    out[, z_value := pnorm(Z, lower.tail = F)]
+    out[, z_value := pnorm(Z, lower.tail = FALSE)]
   }
   return(out)
 }

@@ -22,7 +22,7 @@ readPhenotypes <- function(vcf_file){
   geno <- geno[FILTER == "PASS"]
 
   mvars <- names(geno)[10:ncol(geno)]
-  geno <- geno[, c("#CHROM", "POS", "REF", "ALT", mvars), with = F]
+  geno <- geno[, c("#CHROM", "POS", "REF", "ALT", mvars), with = FALSE]
   mg <- melt(geno, measure.vars = mvars)
   mg <- melt(geno, id.vars = c("#CHROM", "POS", "REF", "ALT"))
   mg <- mg[!value %in% c("0|0", "1|1")]

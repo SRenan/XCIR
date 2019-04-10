@@ -251,7 +251,7 @@ consensusXCI <- function(redownload = FALSE, simple = TRUE){
   # geus <- merge(geuall, geuskew, by = "GENE", suffixes = c("_all", "_skew"), all.x = TRUE)
   geus <- fread(system.file("extdata/GEU_xcistate_181122.tsv", package = "XCIR"))
   cons <- merge(geus, cons, by.x = "GENE", by.y = "gene_name", all.y = TRUE)
-  cons[, c(names(geus), "balaton_consensus_calls", "y_homology"), with = FALSE]
+  cons <- cons[, c(names(geus), "balaton_consensus_calls", "y_homology"), with = FALSE]
   if(simple)
     cons <- cons[!is.na(XCIstate_skew)]
   return(cons)

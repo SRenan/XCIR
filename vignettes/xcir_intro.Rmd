@@ -13,7 +13,19 @@ opts_chunk$set(echo = TRUE, fig.width = 7, fig.align = "center",
                message = FALSE, warning = FALSE)
 ```
 
-# Overview
+# Introduction
+
+XCIR implements statistical models designed for the analysis of the X-chromosome.
+Specifically, it provides mixture-models for the estimation of the fraction
+of inactivation of each parental X (skewing or mosaicism) and tests to
+identify X-linked genes escape the inactivation mechanism.
+
+In this vignette, we present a typical pipeline from allele-specific RNA-Seq
+counts to subject level estimates of mosaicism and XCI-states for all
+X-linked genes.
+
+
+## Pipeline
 
 `XCIR`'s pipeline for calling XCI-states at the subject usually involve
 
@@ -58,7 +70,7 @@ need to map SNPs to genes and ensure that they are heterozygous. We provide
 a function to map SNPs to genes using infromation extracted from ensembl through
 `biomaRt`.
 
-```{r}
+```{r, annoX}
 annoX <- annotateX(vcf)
 head(annoX)
 ```
@@ -71,7 +83,7 @@ In some cases, the data may already be filtered for heterozygous SNPs
 (e.g: If genotyping information is also available for the sample). In this 
 case, the minimum read threshold for **both alleles** can be lowered or removed.
 
-```{r}
+```{r annoX-genotyped}
 annoXgeno <- annotateX(vcf, het_cutoff = 0)
 ```
 
@@ -97,6 +109,7 @@ SNPs within a gene can be summed to get a better estimate of the fraction
 of each parental cell (mosaicism).
 ```{r genic-phased}
 genic <- getGenicDP(annoX, highest_expr = TRUE)
+head(genic)
 ```
 
 When this isn't the case, we can only safely use one SNP. Therefore, we limit
@@ -129,7 +142,7 @@ being that the allelic depth (AD) field should be recorded in the VCF.
 
 The main function of the package `betaBinomXI` allows to fit a simple beta-binomial
 distribution to the expression of genes in the training set.
-```{r}
+```{r, betabin-bb}
 bb <- betaBinomXI(data, xciGenes = xcig, model = "BB")
 ```
 This will estimate the skewing for each individual as well as test for
@@ -158,7 +171,7 @@ heterozygous.
 
 Here, we let the AIC based model selection procedure select the best fitting
 model for that sample.
-```{r}
+```{r betabin-s36}
 s36fit <- betaBinomXI(s36, model = "AUTO", xciGenes = xcig, plot = TRUE)
 ```
 
@@ -169,7 +182,7 @@ heterozygous SNPs and a binomial mixture to fit the sequencing errors.
 This can naturally be applied to the full dataset for subject specific model
 selection.
 
-```{r}
+```{r betabin-auto}
 auto <- betaBinomXI(data, xciGenes = xcig, model = "AUTO")
 ```
 
@@ -187,7 +200,7 @@ auto[, .N, by = "status"]
 The table returned by `betaBinomXI` is comprehensive. In order to summarize 
 results at the subject level, `sample_clean` returns informations
 relevant to each sample, such as estimated skew and the model used. 
-```{r}
+```{r sampleclean}
 sc <- sample_clean(auto)
 head(sc)
 ```
@@ -204,7 +217,14 @@ and an overall classification based on the following cutoffs
 - .25 < pe < .75  $\rightarrow$ Variable escape (VE)
 - pe $\geq$ .75 $\rightarrow$ Escape (E)
 
-```{r}
+```{r getXCIstate}
 xcis <- getXCIstate(auto)
 head(xcis)
+```
+
+
+# Session info
+
+```{r sessinfo}
+sessionInfo()
 ```
