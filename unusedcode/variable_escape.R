@@ -37,7 +37,7 @@
 #' @importFrom grDevices colorRampPalette
 #' @export
 plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
-                        inference = "asymptotic", nsamples =F, cutoffs = c(25, 75),
+                        inference = "asymptotic", nsamples =FALSE, cutoffs = c(25, 75),
                         theme = "gray", hg = 19){
   ns <- sub_xi[, .N, by = GENE] #Number of samples per gene
   if(inference == "asymptotic"){
@@ -47,9 +47,9 @@ plot_status <- function(sub_xi, alpha = .05, min_sup = 0, rownames = NULL,
   } else{
     stop("Inference should be 'asymptotic' or 'exact'")
   }
-  dat <- merge(ns, pe, by = "GENE", all.x=T)
+  dat <- merge(ns, pe, by = "GENE", all.x=TRUE)
   dat <- dat[is.na(N.y), N.y := 0]
-  dat <- merge(dat, unique(sub_xi[, list(GENE, POS)]), by = "GENE", all.x=T) #POS are needed to order the X axis
+  dat <- merge(dat, unique(sub_xi[, list(GENE, POS)]), by = "GENE", all.x=TRUE) #POS are needed to order the X axis
   setnames(dat, c("N.x", "N.y"), c("N_support", "N_escape"))
   dat[, pe := N_escape/N_support]
   dat <- dat[order(POS)]
@@ -176,7 +176,7 @@ plot_status_fraction <- function(xi, alpha = .05, inference = "asymptotic",
   } else{
     stop("Inference should be 'asymptotic' or 'exact'")
   }
-  dat <- merge(ns, pe, by = "GENE", all.x=T)
+  dat <- merge(ns, pe, by = "GENE", all.x=TRUE)
   dat <- dat[is.na(N.y), N.y := 0]
   setnames(dat, c("N.x", "N.y"), c("N_support", "N_escape"))
   dat[, pe := N_escape/N_support]
@@ -236,7 +236,7 @@ CMH <- function(calls, condition, value){
   cmh_dat[, den := (n1*n2*m1*m2)/(t^2*(t-1))]
   cmh_stat <- cmh_dat[, sum(num)^2/sum(den)] #Reject H0:R=1 for large values of cmh_stat
   # Compare to a chisq with 1 df
-  cmh_pv <- pchisq(cmh_stat, 1, lower.tail = F)
+  cmh_pv <- pchisq(cmh_stat, 1, lower.tail = FALSE)
 
   cmh_list <- list(cmh_stat = cmh_stat, cmh_pv = cmh_pv)
   print_cmh(cmh_list)
@@ -245,7 +245,7 @@ CMH <- function(calls, condition, value){
 
 print_cmh <- function(cmh_list, alpha = .05){
   decision <- ifelse(cmh_list$cmh_pv < alpha, "rejects", "fails to reject")
-  print(data.frame(X2 = cmh_list$cmh_stat, pvalue = cmh_list$cmh_pv), row.names = F)
+  print(data.frame(X2 = cmh_list$cmh_stat, pvalue = cmh_list$cmh_pv), row.names = FALSE)
   print(paste("The test", decision, "the null hypothesis that there is no association between XCI status and the outcome of interest."))
   return(NULL)
 }
@@ -262,7 +262,7 @@ print_cmh <- function(cmh_list, alpha = .05){
 summescape <- function(table, fmax = 0.5, alpha = 0.05){
   summ <- copy(table[f <= fmax])
   summ[, status := ifelse(p_value < alpha, "E", "S")]
-  summ <- setkey(summ, GENE, status)[CJ(GENE, status, unique = T), .N, by = .EACHI]
+  summ <- setkey(summ, GENE, status)[CJ(GENE, status, unique = TRUE), .N, by = .EACHI]
   summ <- dcast.data.table(summ, GENE ~ status, value.var = "N")
   summ[, N := E+S]
   summ[, esc := E/N]

@@ -1,10 +1,5 @@
-^inst/extdata/priority\.txt$
-^inst/extdata/codon\.txt$
-^inst/extdata/refFlat\.gencode\.v19\.gz$
 ^\.git$
 ^unusedcode$
 ^.*\.Rproj$
 ^\.Rproj\.user$
 human.g1k.v37.fa
-geutest
-
