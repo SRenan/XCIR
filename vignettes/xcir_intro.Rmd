@@ -125,7 +125,7 @@ Read counts for allele specific expression (ASE) at heterozygous SNP and skewing
 based on pre-determined mode and overdispersion parameters are simulated. The 
 list of training genes is included.
 ```{r}
-data <- fread(system.file("extdata/data2_vignette.tsv", package = "XCIR"))
+data <- fread(system.file("extdata/data34_vignette.tsv", package = "XCIR"))
 xcig <- readLines(system.file("extdata/xcig_vignette.txt", package = "XCIR"))
 ```
 

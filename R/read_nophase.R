@@ -15,6 +15,8 @@
 #' @example inst/examples/workflow.R
 #'
 #' @importFrom S4Vectors unstrsplit
+#' @importFrom IRanges CharacterList
+#' @importFrom VariantAnnotation ScanVcfParam readVcf geno ref alt
 #' @export
 readRNASNPs <- function(vcf_file){
   vcf_param <- ScanVcfParam(fixed = c("ALT"), info = NA, geno = c("AD"))

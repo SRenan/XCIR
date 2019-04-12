@@ -38,7 +38,7 @@ all <- betaBinomXI(dt, xciGenes = xcig)
 bb <- betaBinomXI(dt, xciGenes = xcig, model = "BB", hist = TRUE)
 
 # Plotting fits
-stoshow <- paste0("sample", c(1, 11, 31, 40)) #interesting samples
+stoshow <- paste0("sample", c(31, 33, 35, 40)) #interesting samples
 plotQC(all[sample \%in\% stoshow], xcig = xcig)
 
 # Summarizing results

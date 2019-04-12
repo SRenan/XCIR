@@ -39,14 +39,11 @@ performed).
 vcff <- system.file("extdata/AD_example.vcf", package = "XCIR")
 # Reading functions
 vcf <- readRNASNPs(vcff)
-\dontrun{
-vcf <- readXVcf(vcff)
-}
 vcf <- readVCF4(vcff)
 
 # Annotation functions
 # Using seqminer (requires additional annotation files)
-\dontrun{
+\donttest{
 anno <- addAnno(vcf)
 }
 # Using biomaRt
