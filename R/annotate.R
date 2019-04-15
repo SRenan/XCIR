@@ -209,7 +209,6 @@ addAnno <- function(dt, seqm_annotate = TRUE, read_count_cutoff = 20,
   return(DPR_anno)
 }
 
-#' @export
 .write_siteRef <- function(dt, ref_file = "test_ref.anno.tsv"){
   write.table(unique(dt[, list(CHROM, POS, REF, ALT)]), file = ref_file,
               row.names = FALSE, quote = FALSE, sep = "\t")
