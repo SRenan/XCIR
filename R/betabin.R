@@ -108,6 +108,9 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
 
   #tau is the Xi expression
   dt[, tau := (f-fg)/(2*f-1)]
+  # tau is a fraction (0<tau<1) but estimate can be < 0 if fg < f
+  # Which could only happens if a gene is tightly inactivated
+  dt[, tau := ifelse(tau < 0, 0, tau)]
   dt[, var_tau := (2*f-1)^-2 * var_fg]
   dt[, ivw_tau := tau/sqrt(var_tau)]
 
