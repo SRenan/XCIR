@@ -103,7 +103,8 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
   dt[, var_fg := var_fg/((a_est + b_est)^2 * (a_est + b_est + 1))]
   dt[, var_fg := var_fg/tot^2] # Because we want the variance for the fraction, not the variance for the counts
   dt[, t := (fg-f)/sqrt(var_fg)] #Test statistic
-  dt[, pbb := pbb(dp1, tot, a_est, b_est, type = "midp"), by = c("GENE", "sample")]
+  # dt[, pbb := pbb(dp1, tot, a_est, b_est, type = "midp"), by = c("GENE", "sample")]
+  dt[, pbb := .pbb_midp(dp1, tot, a_est, b_est), by = c("GENE", "sample")]
   dt[, p_value := pnorm(t, lower.tail = FALSE)]
 
   #tau is the Xi expression
@@ -166,29 +167,43 @@ ldbb <- function(x, n, a, b){
   return(ly)
 }
 
-# P-values for exact inference
-pbb <- function(x, n, a, b, type = "midp"){ #p-value for exact inference
+## P-values for exact inference
+#pbb <- function(x, n, a, b, type = "midp"){ #p-value for exact inference
+#  if(is.na(x) | is.na(n)){
+#    return(as.numeric(NA))
+#  }
+#  if(x >= n)
+#    return(0)
+#  if(type == "gt"){
+#    from <- x+1
+#    sump <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
+#  } else if(type == "geq"){
+#    from <- x
+#    sump <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
+#  } else if(type == "midp"){
+#    from <- x+1
+#    t0 <- dbb(x, n, a, b)
+#    t1 <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
+#    sump <- .5*t0 + t1
+#  } else{
+#    stop("Type should be one of 'gt', 'geq', 'midp'")
+#  }
+#  return(sump)
+#}
+
+.pbb_midp <- function(x, n, a, b){
   if(is.na(x) | is.na(n)){
     return(as.numeric(NA))
   }
   if(x >= n)
     return(0)
-  if(type == "gt"){
-    from <- x+1
-    sump <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
-  } else if(type == "geq"){
-    from <- x
-    sump <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
-  } else if(type == "midp"){
-    from <- x+1
-    t0 <- dbb(x, n, a, b)
-    t1 <- sum(dbb(from:n, n, a, b), na.rm = TRUE)
-    sump <- .5*t0 + t1
-  } else{
-    stop("Type should be one of 'gt', 'geq', 'midp'")
-  }
+  from <- x+1
+  t0 <- exp(ldbb(x, n, a, b))
+  t1 <- sum(exp(ldbb(from:n, n, a, b)), na.rm = TRUE)
+  sump <- .5*t0 + t1
   return(sump)
 }
+
 
 ################################################################################
 # Beta-binomial model:

@@ -5,14 +5,19 @@
 #'
 #' @param xciGenes A \code{character} or code{NULL}. By defaults, return a
 #' vector of 177 genes. Other available choices include "cotton" and "intersect".
-#' If a file path is given, the genes will be read from
-#' the file.
+#' If a file path is given, the genes will be read from the file.
 #'
 #' @details
-#' The default gene list is from Carrel et al. Nature 2005. doi:10.1038/nature03479.
-#' Cotton, is a list of 294 inactivated genes compiled by Cotton et al. Genome
-#' Biology (2013). doi:10.1186/gb-2013-14-11-r122. Intersect is a more
-#' stringent list that takes the intersection of both Carrel and Cotton's lists.
+#' Both gene lists are extracted from Cotton et al. Genome
+#' Biology (2013). doi:10.1186/gb-2013-14-11-r122. 
+#' By default, the function returns a list that was used as training set in
+#' the paper. This training set was generated as the intersection of the 
+#' silenced genes identified by both expression (Carrel & Willard, 2005) and 
+#' DNA methylation analysis (Cotton et al, 2011).
+#' Setting it to "cotton" will instead return a list of 294 genes that were 
+#' classified as inactivated by Cotton et al.
+#' "intersect" is the most stringent list which returns the intersection of 
+#' training and predicted set.  
 #'
 #' @return A \code{character} vector of gene names.
 #'
@@ -129,7 +134,7 @@ getXCIstate <- function(xciObj){
   out[, Ntot := sum(N), by = "GENE"]
   outE <- out[status == "E"]#
   outE[, pe := N/Ntot]
-  ret <- outE[, list(GENE, Ntot, pe)]
+  ret <- outE[, .(GENE, Ntot, Nesc = N, pe)]
   ret[, XCIstate := ifelse(pe <= .25, "S", "VE")]
   ret[, XCIstate := ifelse(pe >= .75, "E", XCIstate)]
   return(ret)

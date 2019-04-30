@@ -22,6 +22,7 @@ gv <- c("AD_alt", "AD_hap1", "AD_hap2", "AD_ref", "AIC_bb", "AIC_mm",
         "permout", "pi_err", "pi_escape", "status", "statusJ", "tau",
         "theme", "tot", "type", "value", "var_fg", "var_tau", "write.table",
         "xiexpr", "ymax", "ymin", "convergence", "flag", "gene_biotype",
-        "GENE_pos", "Ntot", "XCIstate", "i.start", "i.end", "XCIstate_skew")
+        "GENE_pos", "Ntot", "XCIstate", "i.start", "i.end", "XCIstate_skew",
+        "pbb", ".")
 globalVariables(gv)
 
