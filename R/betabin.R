@@ -50,7 +50,7 @@
 #' @export
 betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
                         flag = 0, xciGenes = NULL, a0 = NULL,
-                        optimizer = "nlminb", method = NULL, limits = TRUE,
+                        optimizer = c("nlminb", "optim"), method = NULL, limits = TRUE,
                         debug = FALSE){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
@@ -65,14 +65,7 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
     warning("No known silenced gene found in data.")
   }
 
-  ### TODO: This needs to be renamed. Was useful to only process the randomly skewed samples and use the rest as ref.
-  #rm_balanced <- TRUE
-  #if(rm_balanced){
-  #  balanced <- unique(dt_xci[, mean(abs(AD_hap1 - AD_hap2)), by = sample][V1 != 0, sample])
-  #} else{
-  #  balanced <- unique(dt_xci$sample)
-  #}
-
+  optimizer <- match.arg(optimizer)
   model <- .check_model(model)
   modl <- vector("list", length(model))
   for(i in seq_along(modl)){

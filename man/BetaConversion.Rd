@@ -8,23 +8,28 @@ betaParam(alpha = NULL, beta = NULL, m = NULL, theta = NULL,
   mu = NULL, sigma2 = NULL)
 }
 \arguments{
-\item{alpha}{First shape parameter}
+\item{alpha}{A \code{numeric}. First shape parameter}
 
-\item{beta}{Second shape parameter}
+\item{beta}{A \code{numeric}.Second shape parameter}
 
-\item{m}{Mode}
+\item{m}{A \code{numeric}. Mode}
 
-\item{theta}{Concentration}
+\item{theta}{A \code{numeric}. Concentration}
 
-\item{mu}{Mean}
+\item{mu}{A \code{numeric}. Mean}
 
-\item{sigma2}{Variance}
+\item{sigma2}{A \code{numeric}. Variance}
 }
 \value{
-A \code{list} with the two new parameters.
+A \code{list} with all equivalent formulations of the distribution.
 }
 \description{
 Convert parameter values between different beta distribution parametrization
+}
+\details{
+This function needs two parameters that caracterise the beta distribution
+(alpha and beta, mode and concentration or mean and variance) and returns
+all parametrizations.
 }
 \examples{
 
