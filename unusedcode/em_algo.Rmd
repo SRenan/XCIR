@@ -1,0 +1,151 @@
+---
+title: "EM"
+author: "Renan Sauteraud"
+date: "`r date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE, message = F)
+```
+
+## Data
+
+```{r}
+f <- faithful
+plot(density(f$waiting), main = "Waiting")
+```
+
+## Model
+We assume two normal distributions with identical variance.
+
+Likelihood
+$$
+\begin{aligned}
+L(x, \mu_1, \mu_2, \sigma) &= \prod_{i=1}^n
+ \pi_1 \frac{1}{\sqrt{2 \pi \sigma^2}}e^{-\frac{1}{2\sigma^2}(x_i-\mu_1)} +
+ \pi_2 \frac{1}{\sqrt{2 \pi \sigma^2}}e^{-\frac{1}{2\sigma^2}(x_i-\mu_2)}\\
+ &=  \prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} [
+ \pi_1 e^{-\frac{1}{2\sigma^2}(x_i-\mu_1)} +
+ \pi_2 e^{-\frac{1}{2\sigma^2}(x_i-\mu_2)}
+ ]
+\end{aligned}
+$$
+
+For the E step, we need $Q(\theta| \theta^{(t)})$. The expected value of the
+log likelihood function of $\theta$.
+
+$$
+\begin{aligned}
+Q(\theta| \theta^{(t)}) &= E_{Z|X, \theta^{(t)}}[\log L(\theta; x, Z)]\\
+ &= \sum_{i=1}^n \sum_{j=1}^2 T
+\end{aligned}
+$$
+
+```{r}
+x <- faithful$waiting
+# Initialize values
+pi1 <- pi2 <- 0.5
+mu1 <- 50
+mu2 <- 80
+sigma1 <- sigma2 <- 5
+
+sum.finite <- function(x) {
+  sum(x[is.finite(x)])
+}
+Q <- 0
+Q[2] <- sum.finite(log(pi1)+log(dnorm(x, mu1, sigma1))) + sum.finite(log(pi2)+log(dnorm(x, mu2, sigma2)))
+k <- 2
+
+while (abs(Q[k]-Q[k-1])>=1e-6) {
+  # E step: Estimate pi1 and pi2 with current value of parameters theta = (mu1, mu2, sigma)
+  comp1 <- pi1 * dnorm(x, mu1, sigma1)
+  comp2 <- pi2 * dnorm(x, mu2, sigma2)
+  comp.sum <- comp1 + comp2
+  
+  p1 <- comp1/comp.sum
+  p2 <- comp2/comp.sum
+  
+  # M step
+  pi1 <- sum.finite(p1) / length(x)
+  pi2 <- sum.finite(p2) / length(x)
+  
+  mu1 <- sum.finite(p1 * x) / sum.finite(p1)
+  mu2 <- sum.finite(p2 * x) / sum.finite(p2)
+  
+  sigma1 <- sqrt(sum.finite(p1 * (x-mu1)^2) / sum.finite(p1))
+  sigma2 <- sqrt(sum.finite(p2 * (x-mu2)^2) / sum.finite(p2))
+  
+  p1 <- pi1 
+  p2 <- pi2
+  
+  k <- k + 1
+  Q[k] <- sum(log(comp.sum))
+}
+```
+
+It takes `r length(Q)` iterations to converge. 
+
+## Beta-binomial mixture
+
+Assume M1
+
+1. Write the likelihood
+```{r}
+dbb <- function(x, n, a, b){#Beta binomial
+    c <- choose(n, x)
+    bn <- beta(x+a, n-x+b)
+    bd <- beta(a, b)
+    y <- c * bn / bd
+    return(y);
+}
+
+
+#x <- s36fit[GENE %in% xcig, dp1]
+#n <- s36fit[GENE %in% xcig, tot]
+#
+#pi1 <- 0.9
+#pi2 <- 0.1
+#alpha <- 4
+#beta <- 6
+#pi_err <- 0.10
+#
+#sum.finite <- function(x) {
+#  sum(x[is.finite(x)])
+#}
+#Q <- 0
+#Q[2] <- sum.finite(log(pi1)+log(dbb(x, n, a = alpha, b =beta))) + sum.finite(log(pi2)+log(dbinom(x, n, prob = pi_err)))
+#k <- 2
+#
+#while (abs(Q[k]-Q[k-1])>=1e-6) {
+#  # E step: Estimate pi1 and pi2 with current value of parameters theta = (mu1, mu2, sigma)
+#  comp1 <- pi1 * dbb(x, n, a = alpha, b = beta)
+#  comp2 <- pi2 * dbinom(x, n, prob = pi_err)
+#  comp.sum <- comp1 + comp2
+#  
+#  p1 <- comp1/comp.sum
+#  p2 <- comp2/comp.sum
+#  
+#  # M step
+#  pi1 <- sum.finite(p1) / length(x)
+#  pi2 <- sum.finite(p2) / length(x)
+#  
+#  mu1 <- sum.finite(p1 * x) / sum.finite(p1)
+#  mu2 <- sum.finite(p2 * x) / sum.finite(p2)
+#  
+#  sigma1 <- sqrt(sum.finite(p1 * (x-mu1)^2) / sum.finite(p1))
+#  sigma2 <- sqrt(sum.finite(p2 * (x-mu2)^2) / sum.finite(p2))
+#  
+#  p1 <- pi1 
+#  p2 <- pi2
+#  
+#  k <- k + 1
+#  Q[k] <- sum(log(comp.sum))
+#}
+```
+```
+
+2. Write Q
+3. Fit each mixture
+4. Compute 

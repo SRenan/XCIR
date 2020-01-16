@@ -71,7 +71,11 @@ annotateX <- function(xciObj, read_count_cutoff = 20, het_cutoff = 3,
                       release = "hg19", verbose = FALSE){
   # 1) Extract the genes
   egX <- mart_genes(release)[GENE != ""]
-  egX <- egX[gene_biotype %in% c("protein_coding", "pseudogene", "lincRNA")] #Remove miRNA, rRNA,
+  if(release %in% c("grch37", "hg19")){
+    egX <- egX[gene_biotype %in% c("protein_coding", "pseudogene", "lincRNA")] #Remove miRNA, rRNA, ...
+  } else{
+    egX <- egX[gene_biotype %in% c("protein_coding", "processed_pseudogene", "transcribed_unprocessed_pseudogene", "lncRNA")]
+  }
   # Handle genes that have multiple start/end positions
   dupg <- egX[duplicated(egX$GENE), GENE]
   if(verbose){

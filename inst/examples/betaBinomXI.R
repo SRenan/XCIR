@@ -6,8 +6,8 @@ xcigf <- system.file("extdata/xcig_vignette.txt", package = "XCIR")
 xcig <- readLines(xcigf)
 # Run all models on the data
 all <- betaBinomXI(dt, xciGenes = xcig)
-# Simple BetaBinomial model and show histogram of skewing
-bb <- betaBinomXI(dt, xciGenes = xcig, model = "BB", hist = TRUE)
+# Simple BetaBinomial model and show histogram of skewing ~~A~~~
+bb <- betaBinomXI(dt, xciGenes = xcig, model = "M0", hist = TRUE)
 
 # Plotting fits
 stoshow <- paste0("sample", c(31, 33, 35, 40)) #interesting samples

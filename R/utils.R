@@ -185,7 +185,7 @@ getXCIstate <- function(xciObj){
 #' Convert parameter values between different beta distribution parametrization
 #'
 #' @param alpha A \code{numeric}. First shape parameter
-#' @param beta A \code{numeric}.Second shape parameter
+#' @param beta A \code{numeric}. Second shape parameter
 #' @param m A \code{numeric}. Mode
 #' @param theta A \code{numeric}. Concentration
 #' @param mu A \code{numeric}. Mean
@@ -196,7 +196,7 @@ getXCIstate <- function(xciObj){
 #' (alpha and beta, mode and concentration or mean and variance) and returns
 #' all parametrizations.
 #' 
-#' @return A \code{list} with all equivalent formulations of the distribution.
+#' @return A named \code{numeric} with all equivalent formulations of the distribution.
 #'
 #' @examples
 #'
@@ -222,5 +222,5 @@ betaParam <- function(alpha = NULL, beta = NULL, m = NULL, theta = NULL, mu = NU
     mu <- mv[1]
     sigma2 <- mv[2]
   }
-  return(c(alpha, beta, m, theta, mu, sigma2))
+  return(c(alpha = alpha, beta = beta, m = m, theta = theta, mu = mu, sigma2 = sigma2))
 }

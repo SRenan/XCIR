@@ -4,8 +4,13 @@
 \alias{annotateX}
 \title{Annotate}
 \usage{
-annotateX(xciObj, read_count_cutoff = 20, het_cutoff = 3,
-  release = "hg19", verbose = FALSE)
+annotateX(
+  xciObj,
+  read_count_cutoff = 20,
+  het_cutoff = 3,
+  release = "hg19",
+  verbose = FALSE
+)
 }
 \arguments{
 \item{xciObj}{A \code{data.table}. The data to be annotated must contain

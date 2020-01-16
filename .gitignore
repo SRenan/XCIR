@@ -6,3 +6,7 @@
 .Rproj.*
 *.fa
 *.fa.fai
+inst/extdata/codon.txt
+inst/extdata/priority.txt
+inst/extdata/human*
+inst/extdata/refFlat*

@@ -4,13 +4,19 @@
 \alias{betaParam}
 \title{Converting beta distribution parameters}
 \usage{
-betaParam(alpha = NULL, beta = NULL, m = NULL, theta = NULL,
-  mu = NULL, sigma2 = NULL)
+betaParam(
+  alpha = NULL,
+  beta = NULL,
+  m = NULL,
+  theta = NULL,
+  mu = NULL,
+  sigma2 = NULL
+)
 }
 \arguments{
 \item{alpha}{A \code{numeric}. First shape parameter}
 
-\item{beta}{A \code{numeric}.Second shape parameter}
+\item{beta}{A \code{numeric}. Second shape parameter}
 
 \item{m}{A \code{numeric}. Mode}
 
@@ -21,7 +27,7 @@ betaParam(alpha = NULL, beta = NULL, m = NULL, theta = NULL,
 \item{sigma2}{A \code{numeric}. Variance}
 }
 \value{
-A \code{list} with all equivalent formulations of the distribution.
+A named \code{numeric} with all equivalent formulations of the distribution.
 }
 \description{
 Convert parameter values between different beta distribution parametrization

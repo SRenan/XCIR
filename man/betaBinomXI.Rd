@@ -4,15 +4,25 @@
 \alias{betaBinomXI}
 \title{Fit mixture model}
 \usage{
-betaBinomXI(genic_dt, model = "AUTO", plot = FALSE, hist = FALSE,
-  flag = 0, xciGenes = NULL, a0 = NULL, optimizer = c("nlminb",
-  "optim"), method = NULL, limits = TRUE, debug = FALSE)
+betaBinomXI(
+  genic_dt,
+  model = "AUTO",
+  plot = FALSE,
+  hist = FALSE,
+  flag = 0,
+  xciGenes = NULL,
+  a0 = NULL,
+  optimizer = c("nlminb", "optim"),
+  method = NULL,
+  limits = TRUE,
+  debug = FALSE
+)
 }
 \arguments{
 \item{genic_dt}{A \code{data.table}. The table as outputted by \code{getGenicDP}.}
 
 \item{model}{A \code{character} indicating which model to use to estimate
-the mosaicism. Valid choices are "AUTO", "BB", "MM", "MM2", "MM3". See details.}
+the mosaicism. Valid choices are "AUTO", "M0", "M1", "M2", "MF". See details.}
 
 \item{plot}{A \code{logical}. If set to TRUE, information about the training
 set and the skewing estimate will be plotted.}
@@ -54,9 +64,9 @@ Fit a mixture model to estimate mosaicism and XCI-escape.
 The model determines the number of components used in the mixture model. By
 default, "AUTO" tries all combinations of mixtures and the best estimate is
 kept using backward selection based on AIC.
-BB is a simple beta-binomial. MM adds a binomial component to model the
-sequencing errors. MM2 jointly models the probability of misclasification
-in the training set. MM3 include all 3 components.
+M0 is a simple beta-binomial. M1 adds a binomial component to model the
+sequencing errors. M2 jointly models the probability of misclasification
+in the training set. MF include all 3 components.
 
 Flags in the output reports issues in convergence. If \code{flag} is set to 0,
 nothing is done. If set to 1, the model selection will avoid flagged models
@@ -73,8 +83,8 @@ xcigf <- system.file("extdata/xcig_vignette.txt", package = "XCIR")
 xcig <- readLines(xcigf)
 # Run all models on the data
 all <- betaBinomXI(dt, xciGenes = xcig)
-# Simple BetaBinomial model and show histogram of skewing
-bb <- betaBinomXI(dt, xciGenes = xcig, model = "BB", hist = TRUE)
+# Simple BetaBinomial model and show histogram of skewing ~~A~~~
+bb <- betaBinomXI(dt, xciGenes = xcig, model = "M0", hist = TRUE)
 
 # Plotting fits
 stoshow <- paste0("sample", c(31, 33, 35, 40)) #interesting samples
