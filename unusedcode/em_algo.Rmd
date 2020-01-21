@@ -87,6 +87,34 @@ while (abs(Q[k]-Q[k-1])>=1e-6) {
 
 It takes `r length(Q)` iterations to converge. 
 
+## Binomial mixture
+
+Based
+
+Let 
+
+- $\theta$ be the parameters of the distributions
+- $X$ be the observed data
+- $Z$ be the mixture each data point is associated with
+
+The EM steps are:
+
+1. Initialize $\theta$
+2. E-step: Find the classes $Z$ of each $X$ for the current values of $\theta$
+3. M-step: Find the value of $\theta$ for the current values of $Z$
+4. Iterate steps 2 and 3 until convergence
+
+Derivation based on [stackexchange question](https://stats.stackexchange.com/questions/297776/em-algorithm-for-a-binomial-distribution).
+
+We need:
+
+- $Q(\theta|\theta^{(t)}) = E_{Z|X, \theta^{(t)}}[\log L(\theta; X,Z)]$
+- $
+
+```{r}
+
+```
+
 ## Beta-binomial mixture
 
 Assume M1
