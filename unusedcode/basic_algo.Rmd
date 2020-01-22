@@ -69,13 +69,23 @@ Derivation based on [stackexchange question](https://stats.stackexchange.com/que
 
 $$
 \begin{aligned}
-P(X|Z) &= \prod_{i=1}^n P(Xi|Z_i = 1)P(Z_i = 1) + P(Xi|Z_i = 2)P(Z_i = 2)\\
- &= \sum_{j=1}^m (\binom{n_j}{x_j} \theta_1^x(1-\theta_1)^{n_j-x_j} p_1)^{z_i} + 
-                 (\binom{n_j}{x_j} \theta_2^x(1-\theta_2)^{n_j-x_j} p_2)^{1-z_i}\\
-logL &= \sum_{j=1}^m [z_i](\ln(p_1) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_1) + (n_j-x_j) \ln(1-\theta_1)) +
-                     [1-z_i](\ln(p_2) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_2) + (n_j-x_j) \ln(1-\theta_2))\\
+P(X|Z) &= \prod_{j=1}^m P(Xi|Z_i = 1)P(Z_i = 1) + P(Xi|Z_i = 2)P(Z_i = 2)\\
+L &= \prod_{j=1}^m \left[ \binom{n_j}{x_j} \theta_1^{x_j}(1-\theta_1)^{n_j-x_j} p_1 \right]^{z_i} + 
+                 \left[ \binom{n_j}{x_j} \theta_2^{x_j}(1-\theta_2)^{n_j-x_j} p_2 \right]^{1-z_i}\\
+logL &= \sum_{j=1}^m [z_i] \left[ \ln(p_1) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_1) + (n_j-x_j) \ln(1-\theta_1) \right] +
+                     [1-z_i] \left[ \ln(p_2) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_2) + (n_j-x_j) \ln(1-\theta_2) \right]\\
 \end{aligned}
 $$
+
+Now maximize Q: Derive Q with respect to each parameter theta1, theta2
+
+$$
+\begin{aligned}
+\frac{\partial Q}{\partial \theta_1} &= \sum_{j=1}^m [z_i] \left[ \frac{x_j}{\theta_1} + \frac{n_j - x_j}{1-\theta_1} \right]\\
+\theta_1^{(t+1)} &= \\
+\end{aligned}
+$$
+
 
 
 
@@ -85,11 +95,14 @@ sum.finite <- function(x) {
 }
 
 while (abs(Q[k]-Q[k-1])>=1e-6){
+  # E step
+  # Likelihood of each datapoint in every mixture at current parameter values
   comp1 <- p1*dbinom(xj, nj, theta1)
   comp2 <- p2*dbinom(xj, nj, theta2)
   comp_sum <- comp1 + comp2
   p1 <- comp1/comp_sum
   p2 <- comp2/comp_sum
+  
   # M step
   
   p1 <- sum.finite(p1)/length(xj)
@@ -106,13 +119,5 @@ while (abs(Q[k]-Q[k-1])>=1e-6){
 
 }
 ```
-
-$$
-\begin{aligned}
-L &= \binom{n}{x} \pi^x(1-\pi)^{n-x}\\
-logL &\propto  x\log(\pi) + (n-x)\log(1-\pi)\\
-(\theta|\theta^{(t)}) = E_{Z|X, \theta^{(t)}}[\log L(\theta; X,Z)]
-\end{aligned}
-$$
 
 

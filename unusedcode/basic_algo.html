@@ -364,7 +364,7 @@ summary {
 
 <h1 class="title toc-ignore">EM</h1>
 <h4 class="author">Renan Sauteraud</h4>
-<h4 class="date">Tue Jan 21 17:49:06 2020</h4>
+<h4 class="date">Wed Jan 22 13:42:23 2020</h4>
 
 </div>
 
@@ -417,11 +417,18 @@ Q(\theta|\theta^{(t)}) = E_{Z|X, \theta^{(t)}}[\log L(\theta; X,Z)]
 </ul>
 <p><span class="math display">\[
 \begin{aligned}
-P(X|Z) &amp;= \prod_{i=1}^n P(Xi|Z_i = 1)P(Z_i = 1) + P(Xi|Z_i = 2)P(Z_i = 2)\\
- &amp;= \sum_{j=1}^m (\binom{n_j}{x_j} \theta_1^x(1-\theta_1)^{n_j-x_j} p_1)^{z_i} + 
-                 (\binom{n_j}{x_j} \theta_2^x(1-\theta_2)^{n_j-x_j} p_2)^{1-z_i}\\
-logL &amp;= \sum_{j=1}^m [z_i](\ln(p_1) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_1) + (n_j-x_j) \ln(1-\theta_1)) +
-                     [1-z_i](\ln(p_2) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_2) + (n_j-x_j) \ln(1-\theta_2))\\
+P(X|Z) &amp;= \prod_{j=1}^m P(Xi|Z_i = 1)P(Z_i = 1) + P(Xi|Z_i = 2)P(Z_i = 2)\\
+L &amp;= \prod_{j=1}^m \left[ \binom{n_j}{x_j} \theta_1^{x_j}(1-\theta_1)^{n_j-x_j} p_1 \right]^{z_i} + 
+                 \left[ \binom{n_j}{x_j} \theta_2^{x_j}(1-\theta_2)^{n_j-x_j} p_2 \right]^{1-z_i}\\
+logL &amp;= \sum_{j=1}^m [z_i] \left[ \ln(p_1) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_1) + (n_j-x_j) \ln(1-\theta_1) \right] +
+                     [1-z_i] \left[ \ln(p_2) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_2) + (n_j-x_j) \ln(1-\theta_2) \right]\\
+\end{aligned}
+\]</span></p>
+<p>Now maximize Q: Derive Q with respect to each parameter theta1, theta2</p>
+<p><span class="math display">\[
+\begin{aligned}
+\frac{\partial Q}{\partial \theta_1} &amp;= \sum_{j=1}^m [z_i] \left[ \frac{x_j}{\theta_1} + \frac{n_j - x_j}{1-\theta_1} \right]\\
+\theta_1^{(t+1)} &amp;= \\
 \end{aligned}
 \]</span></p>
 <pre class="r"><code>sum.finite &lt;- function(x) {
@@ -429,11 +436,14 @@ logL &amp;= \sum_{j=1}^m [z_i](\ln(p_1) + \ln \binom{n_j}{x_j} + x_j \ln(\theta_
 }
 
 while (abs(Q[k]-Q[k-1])&gt;=1e-6){
+  # E step
+  # Likelihood of each datapoint in every mixture at current parameter values
   comp1 &lt;- p1*dbinom(xj, nj, theta1)
   comp2 &lt;- p2*dbinom(xj, nj, theta2)
   comp_sum &lt;- comp1 + comp2
   p1 &lt;- comp1/comp_sum
   p2 &lt;- comp2/comp_sum
+  
   # M step
   
   p1 &lt;- sum.finite(p1)/length(xj)
@@ -449,13 +459,6 @@ while (abs(Q[k]-Q[k-1])&gt;=1e-6){
   Q[k] &lt;- sum(log(comp.sum))
 
 }</code></pre>
-<p><span class="math display">\[
-\begin{aligned}
-L &amp;= \binom{n}{x} \pi^x(1-\pi)^{n-x}\\
-logL &amp;\propto  x\log(\pi) + (n-x)\log(1-\pi)\\
-(\theta|\theta^{(t)}) = E_{Z|X, \theta^{(t)}}[\log L(\theta; X,Z)]
-\end{aligned}
-\]</span></p>
 </div>
 </div>
 
