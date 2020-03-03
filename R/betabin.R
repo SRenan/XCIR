@@ -54,7 +54,7 @@
 betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
                         flag = 0, xciGenes = NULL, a0 = NULL,
                         optimizer = c("nlminb", "optim"), method = NULL, limits = TRUE,
-                        debug = FALSE){
+                        keep_params = FALSE, debug = FALSE){
   dt <- copy(genic_dt)
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
@@ -617,9 +617,13 @@ MF <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL,
 ################################################################################
 # Model selection
 .back_sel <- function(modl, criterion = "AIC", flag = 0, keep_params = FALSE){
-  cols <- Reduce(intersect, lapply(modl, names))
-  modl <- lapply(modl, function(XX){XX[, cols, with = FALSE]})
-  aics <- rbindlist(modl, fill = keep_params)
+  if(keep_params){
+    aics <- rbindlist(modl, fill = keep_params)
+  } else{
+    cols <- Reduce(intersect, lapply(modl, names))
+    modl <- lapply(modl, function(XX){XX[, cols, with = FALSE]})
+    aics <- rbindlist(modl)
+  }
   if(flag == 1){# Models where the sample had errors are discarded
     aics <- aics[!grep("^M", flag)]
   }
