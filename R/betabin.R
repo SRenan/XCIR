@@ -619,7 +619,7 @@ MF <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL,
 .back_sel <- function(modl, criterion = "AIC", flag = 0, keep_params = FALSE){
   cols <- Reduce(intersect, lapply(modl, names))
   modl <- lapply(modl, function(XX){XX[, cols, with = FALSE]})
-  aics <- rbindlist(modl)
+  aics <- rbindlist(modl, fill = keep_params)
   if(flag == 1){# Models where the sample had errors are discarded
     aics <- aics[!grep("^M", flag)]
   }
