@@ -2,6 +2,7 @@
 
 export(addAnno)
 export(annotateX)
+export(annotates_snps)
 export(betaBinomXI)
 export(betaParam)
 export(consensusXCI)

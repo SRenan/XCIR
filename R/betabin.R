@@ -24,6 +24,9 @@
 #'  constrained. Using upper bounds on the probability of sequencing error and
 #'  escape in the training set ensures that the dominant mixture represents the
 #'  skewing for inactivated genes.
+#' @param keep_params A \code{logical}. If set to TRUE, all parameters will be
+#'  reported instead of just the alpha and beta estimates. Can useful for
+#'  model specific analysis but clutters the table.
 #' @param debug A \code{logical}. If set to TRUE, information about each iteration
 #'  will be printed (Useful to identify problematic samples).
 #'
@@ -82,7 +85,7 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
     modl[[i]] <- dt
   }
   if(length(modl) > 1){
-    dt <- .back_sel(modl, flag = flag)
+    dt <- .back_sel(modl, flag = flag, keep_params = keep_params)
   } else{
     dt <- modl[[1]]
   }
@@ -613,7 +616,7 @@ MF <- function(dt_xci, full_dt, a0 = NULL, optimizer ="nlminb", method = NULL,
 }
 ################################################################################
 # Model selection
-.back_sel <- function(modl, criterion = "AIC", flag = 0){
+.back_sel <- function(modl, criterion = "AIC", flag = 0, keep_params = FALSE){
   cols <- Reduce(intersect, lapply(modl, names))
   modl <- lapply(modl, function(XX){XX[, cols, with = FALSE]})
   aics <- rbindlist(modl)

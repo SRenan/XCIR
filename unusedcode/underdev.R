@@ -15,6 +15,8 @@ newCalls <- function(xcirout, newdata){
   newdata[, var_fg := var_fg/tot^2] # Because we want the variance for the fraction, not the variance for the counts
   newdata[, t := (fg-f)/sqrt(var_fg)] #Test statistic
   newdata[, p_value := pnorm(t, lower.tail = FALSE)]
+  
+  newdata[, status := ifelse(p_value < 0.05, "E", "S")]
 
   return(newdata)
 }

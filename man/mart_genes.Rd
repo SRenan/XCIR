@@ -4,7 +4,7 @@
 \alias{mart_genes}
 \title{biomaRt genes}
 \usage{
-mart_genes(release = "hg19", chr = "X")
+mart_genes(release = "latest", chr = "X")
 }
 \arguments{
 \item{release}{A \code{character}. Genome release name. Valid releases are

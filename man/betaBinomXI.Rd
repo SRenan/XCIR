@@ -53,6 +53,10 @@ skewing for inactivated genes.}
 
 \item{debug}{A \code{logical}. If set to TRUE, information about each iteration
 will be printed (Useful to identify problematic samples).}
+
+\item{keep_params}{A \code{logical}. If set to TRUE, all parameters will be
+reported instead of just the alpha and beta estimates. Can useful for
+model specific analysis but clutters the table.}
 }
 \value{
 A \code{data.table} with an entry per sample and per gene.
