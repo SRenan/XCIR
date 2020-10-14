@@ -11,25 +11,28 @@
 #'  "hg19", "hg38".
 #' @param chr A \code{character} or \code{NULL}. If specified, only the genes
 #'  from the specified chromosomes will be returned.
+#' @param mirror A \code{character}. Passed to \code{useEnsembl}.
 #'
 #' @return A \code{data.table} with the gene symbol, start and end position
 #'  and matching ensembl transcripts.
 #'
 #' @examples
 #' #Chromosome X, hg19
-#' egX <- mart_genes()
+#' egX <- mart_genes("hg19")
 #' #Full genome, latest release
 #' eg <- mart_genes("hg38")
 #'
 #' @importFrom biomaRt useMart getBM
 #' @export
-mart_genes <- function(release = "hg19", chr = "X"){
+mart_genes <- function(release = "hg38", chr = "X", mirror = NULL){
   release <- tolower(release)
   if(release %in% c("grch38", "hg38", "latest")){
-    mart <- useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl")
+    mart <- useEnsembl(biomart = "ensembl", mirror = mirror, dataset = "hsapiens_gene_ensembl")
+    #mart <- useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl")
     message("Fetching genes for hg38")
   } else if(release %in% c("grch37", "hg19")){
-    mart <- useMart(biomart="ENSEMBL_MART_ENSEMBL", host="grch37.ensembl.org", path="/biomart/martservice", dataset="hsapiens_gene_ensembl")
+    mart <- useEnsembl(biomart = "ensembl", mirror = mirror, GRCh = "37", dataset = "hsapiens_gene_ensembl")
+    #mart <- useMart(biomart="ENSEMBL_MART_ENSEMBL", host="grch37.ensembl.org", path="/biomart/martservice", dataset="hsapiens_gene_ensembl")
     message("Fetching genes for hg19")
   } else if(release %in% c("hg17", "hg18")){
     stop(paste(release, "is too old (hg18 = 2006)"))
@@ -68,9 +71,9 @@ mart_genes <- function(release = "hg19", chr = "X"){
 #'
 #' @export
 annotateX <- function(xciObj, read_count_cutoff = 20, het_cutoff = 3,
-                      release = "hg19", verbose = FALSE){
+                      release = "hg38", mirror = NULL, verbose = FALSE){
   # 1) Extract the genes
-  egX <- mart_genes(release)[GENE != ""]
+  egX <- mart_genes(release = release, mirror = mirror)[GENE != ""]
   egX <- egX[gene_biotype %in% c("protein_coding", "pseudogene", "lincRNA")] #Remove miRNA, rRNA,
   # Handle genes that have multiple start/end positions
   dupg <- egX[duplicated(egX$GENE), GENE]
