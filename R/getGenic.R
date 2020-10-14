@@ -81,3 +81,4 @@ getGenicDP <- function(dt_anno, highest_expr = TRUE, pool = FALSE, sex_file = NU
   top <- annotated[, tail(.SD, nsnps), by = c("sample", "GENE")]
   return(top)
 }
+

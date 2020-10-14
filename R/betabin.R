@@ -59,8 +59,6 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
   dt[, dp1 := pmin(AD_hap1, AD_hap2)]
   dt[, tot := AD_hap1 + AD_hap2]
 
-  # Use XCI to estimate parameters
-  #if(xci > 0){
   xcig <- readXCI(xciGenes)
   inactivated_genes <- xcig
   dt_xci <- dt[GENE %in% inactivated_genes]
@@ -101,7 +99,6 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
   
   # TODO: Pack this into the xci_calls function
   dt[, t := (fg-f)/sqrt(var_fg)] #Test statistic
-  # dt[, pbb := pbb(dp1, tot, a_est, b_est, type = "midp"), by = c("GENE", "sample")]
   dt[, pbb := .pbb_midp(dp1, tot, a_est, b_est), by = c("GENE", "sample")]
   dt[, p_value := pnorm(t, lower.tail = FALSE)]
   dt[, status := ifelse(p_value < 0.05, "E", "S")]
@@ -738,7 +735,8 @@ xci_qc <- function(xci_dt, xcig = NULL, gene_names = "",
 #' @example inst/examples/betaBinomXI.R
 #'
 #' @export
-plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
+plotQC <- function(xci_table, xcig = NULL, gene_names = "",
+                   showsd = TRUE, mean = TRUE){
   sd_f <- f_sd_up <- f_sd_lo <- meanf <- NULL
   # TODO: Order the genes along X OR by their allelic ratio
   # TODO: Add confint based on the distribution: https://stats.stackexchange.com/questions/82475/calculate-the-confidence-interval-for-the-mean-of-a-beta-distribution
@@ -757,8 +755,10 @@ plotQC <- function(xci_table, xcig = NULL, gene_names = ""){
   p <- ggplot(plottable, aes(x = index, y = fg))
   # Plot the skewing
   p <- p + geom_hline(aes(yintercept = f))
-  p <- p + geom_hline(aes(yintercept = f_sd_up), lty = "dashed")
-  p <- p + geom_hline(aes(yintercept = f_sd_lo), lty = "dashed")
+  if(showsd){
+    p <- p + geom_hline(aes(yintercept = f_sd_up), lty = "dashed")
+    p <- p + geom_hline(aes(yintercept = f_sd_lo), lty = "dashed")
+  }
   # Plot basic mean for comparison
   p <- p + geom_hline(aes(yintercept = meanf), color = "blue", lty = "dotted")
   p <- p + geom_text(aes(0,meanf,label = "mean", hjust = -1), colour = "blue")

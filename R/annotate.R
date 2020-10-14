@@ -271,6 +271,7 @@ consensusXCI <- function(redownload = FALSE, simple = TRUE){
 #' @param chr A \code{character}. Filter SNPs for the selected chromosome.
 #' @export
 annotates_snps <- function(object, pos_col = "POS", chr = "X"){
+  # read from file instead of biomaRt
   positions <- object[, get(pos_col)]
   mart <- useMart(biomart="ENSEMBL_MART_SNP", dataset="hsapiens_snp")
   atts <- c("refsnp_id", "chrom_start")
