@@ -4,7 +4,7 @@
 \alias{mart_genes}
 \title{biomaRt genes}
 \usage{
-mart_genes(release = "hg19", chr = "X")
+mart_genes(release = "hg38", chr = "X", mirror = NULL)
 }
 \arguments{
 \item{release}{A \code{character}. Genome release name. Valid releases are
@@ -12,6 +12,8 @@ mart_genes(release = "hg19", chr = "X")
 
 \item{chr}{A \code{character} or \code{NULL}. If specified, only the genes
 from the specified chromosomes will be returned.}
+
+\item{mirror}{A \code{character}. Passed to \code{useEnsembl}.}
 }
 \value{
 A \code{data.table} with the gene symbol, start and end position
@@ -22,8 +24,8 @@ Extract gene informations from biomaRt
 }
 \examples{
 #Chromosome X, hg19
-egX <- mart_genes()
+egX <- mart_genes("hg19", mirror = "useast")
 #Full genome, latest release
-eg <- mart_genes("hg38")
+eg <- mart_genes("hg38", mirror = "useast")
 
 }

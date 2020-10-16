@@ -18,11 +18,11 @@
 #'
 #' @examples
 #' #Chromosome X, hg19
-#' egX <- mart_genes("hg19")
+#' egX <- mart_genes("hg19", mirror = "useast")
 #' #Full genome, latest release
-#' eg <- mart_genes("hg38")
+#' eg <- mart_genes("hg38", mirror = "useast")
 #'
-#' @importFrom biomaRt useMart getBM
+#' @importFrom biomaRt useMart getBM useEnsembl
 #' @export
 mart_genes <- function(release = "hg38", chr = "X", mirror = NULL){
   release <- tolower(release)
@@ -258,4 +258,22 @@ consensusXCI <- function(redownload = FALSE, simple = TRUE){
   if(simple)
     cons <- cons[!is.na(XCIstate_skew)]
   return(cons)
+}
+
+#' Annotate 
+#' 
+#' Find SNPs based on matching position in dbgap using biomaRt
+#' 
+#' @param object A \code{data.table} with genomic positions. Typically, the 
+#' table returned by \code{betaBinomXI}.
+#' @param pos_col A \code{character} indicating the column that contains genomic
+#' positions.
+#' @param chr A \code{character}. Filter SNPs for the selected chromosome.
+#' @export
+annotates_snps <- function(object, pos_col = "POS", chr = "X"){
+  # read from file instead of biomaRt
+  positions <- object[, get(pos_col)]
+  mart <- useMart(biomart="ENSEMBL_MART_SNP", dataset="hsapiens_snp")
+  atts <- c("refsnp_id", "chrom_start")
+  snps <- getBM(atts, filters = "chr_name", values = chr, mart = mart)
 }

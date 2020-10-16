@@ -4,8 +4,7 @@
 \alias{getGenicDP}
 \title{Get expression at the gene level}
 \usage{
-getGenicDP(dt_anno, highest_expr = TRUE, pool = FALSE,
-  gender_file = NULL)
+getGenicDP(dt_anno, highest_expr = TRUE, pool = FALSE, sex_file = NULL)
 }
 \arguments{
 \item{dt_anno}{A \code{data.table}. An annotated table of read counts for
@@ -20,9 +19,9 @@ phasing information is available. If set to TRUE, the highest expressed SNP
 TRUE. If set to TRUE, the read counts are pooled accross all samples for
 each SNP. Only use this if the samples come from the same subject}
 
-\item{gender_file}{A \code{character} or NULL. Leave NULL if \code{dt_anno}
-already contains a gender column. The file must contain at least a "sample"
-and "gender" column with samples matching the samples in \code{dt_anno}.}
+\item{sex_file}{A \code{character} or NULL. Leave NULL if \code{dt_anno}
+already contains a sex column. The file must contain at least a "sample"
+and "sex" column with samples matching the samples in \code{dt_anno}.}
 }
 \value{
 A \code{data.table}. That should be used as input for
@@ -39,20 +38,17 @@ performed).
 vcff <- system.file("extdata/AD_example.vcf", package = "XCIR")
 # Reading functions
 vcf <- readRNASNPs(vcff)
-\dontrun{
-vcf <- readXVcf(vcff)
-}
 vcf <- readVCF4(vcff)
 
 # Annotation functions
 # Using seqminer (requires additional annotation files)
-\dontrun{
+\donttest{
 anno <- addAnno(vcf)
 }
 # Using biomaRt
-anno <- annotateX(vcf)
+anno <- annotateX(vcf, mirror = "useast")
 # Do not remove SNPs with 0 count on minor allele
-anno0 <- annotateX(vcf, het_cutoff = 0)
+anno0 <- annotateX(vcf, het_cutoff = 0, mirror = "useast")
 
 # Summarise read counts per gene
 # Assuming data is phased, reads can be summed across genes.

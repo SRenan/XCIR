@@ -4,8 +4,14 @@
 \alias{annotateX}
 \title{Annotate}
 \usage{
-annotateX(xciObj, read_count_cutoff = 20, het_cutoff = 3,
-  release = "hg19", verbose = FALSE)
+annotateX(
+  xciObj,
+  read_count_cutoff = 20,
+  het_cutoff = 3,
+  release = "hg38",
+  mirror = NULL,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{xciObj}{A \code{data.table}. The data to be annotated must contain
@@ -36,20 +42,17 @@ Map positions of SNPs to genes extracted from biomaRt
 vcff <- system.file("extdata/AD_example.vcf", package = "XCIR")
 # Reading functions
 vcf <- readRNASNPs(vcff)
-\dontrun{
-vcf <- readXVcf(vcff)
-}
 vcf <- readVCF4(vcff)
 
 # Annotation functions
 # Using seqminer (requires additional annotation files)
-\dontrun{
+\donttest{
 anno <- addAnno(vcf)
 }
 # Using biomaRt
-anno <- annotateX(vcf)
+anno <- annotateX(vcf, mirror = "useast")
 # Do not remove SNPs with 0 count on minor allele
-anno0 <- annotateX(vcf, het_cutoff = 0)
+anno0 <- annotateX(vcf, het_cutoff = 0, mirror = "useast")
 
 # Summarise read counts per gene
 # Assuming data is phased, reads can be summed across genes.

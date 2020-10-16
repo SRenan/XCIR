@@ -15,13 +15,14 @@ gv <- c("AD_alt", "AD_hap1", "AD_hap2", "AD_ref", "AIC_bb", "AIC_mm",
         "Ninac", "Nsamples", "Ntrain", "POS", "REF", "Tobs", "V1", "V2",
         "a", "a1", "a2", "a_est", "a_hap1", "a_hap2", "ai", "b_est",
         "capture.output", "count", "den", "denom", "dp1", "escape", "f",
-        "facet_wrap", "fg", "gNrm", "gender", "geom_hline", "geom_point",
+        "facet_wrap", "fg", "gNrm", "sex", "geom_hline", "geom_point",
         "geom_rect", "h1", "h2", "index", "ivw_tau", "jcss", "k", "label",
         "logL", "m1", "m2", "model", "n1", "n2", "n_snps", "nsamples",
         "num", "p_het", "p_inac", "p_value", "pe", "percent", "perm_pvalue",
         "permout", "pi_err", "pi_escape", "status", "statusJ", "tau",
         "theme", "tot", "type", "value", "var_fg", "var_tau", "write.table",
         "xiexpr", "ymax", "ymin", "convergence", "flag", "gene_biotype",
-        "GENE_pos", "Ntot", "XCIstate", "i.start", "i.end", "XCIstate_skew")
+        "GENE_pos", "Ntot", "XCIstate", "i.start", "i.end", "XCIstate_skew",
+        "pbb", ".")
 globalVariables(gv)
 

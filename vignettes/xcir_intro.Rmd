@@ -71,7 +71,7 @@ a function to map SNPs to genes using infromation extracted from ensembl through
 `biomaRt`.
 
 ```{r, annoX}
-annoX <- annotateX(vcf)
+annoX <- annotateX(vcf, mirror = "useast")
 head(annoX)
 ```
 
@@ -84,7 +84,7 @@ In some cases, the data may already be filtered for heterozygous SNPs
 case, the minimum read threshold for **both alleles** can be lowered or removed.
 
 ```{r annoX-genotyped}
-annoXgeno <- annotateX(vcf, het_cutoff = 0)
+annoXgeno <- annotateX(vcf, het_cutoff = 0, mirror = "useast")
 ```
 
 By default, `annotateX` aligns to `hg19`. Other versions can be passed through
@@ -125,7 +125,7 @@ Read counts for allele specific expression (ASE) at heterozygous SNP and skewing
 based on pre-determined mode and overdispersion parameters are simulated. The 
 list of training genes is included.
 ```{r}
-data <- fread(system.file("extdata/data2_vignette.tsv", package = "XCIR"))
+data <- fread(system.file("extdata/data34_vignette.tsv", package = "XCIR"))
 xcig <- readLines(system.file("extdata/xcig_vignette.txt", package = "XCIR"))
 ```
 
@@ -143,7 +143,7 @@ being that the allelic depth (AD) field should be recorded in the VCF.
 The main function of the package `betaBinomXI` allows to fit a simple beta-binomial
 distribution to the expression of genes in the training set.
 ```{r, betabin-bb}
-bb <- betaBinomXI(data, xciGenes = xcig, model = "BB")
+bb <- betaBinomXI(data, xciGenes = xcig, model = "M0")
 ```
 This will estimate the skewing for each individual as well as test for
 XCI-escape for each gene in each sample.
@@ -175,7 +175,7 @@ model for that sample.
 s36fit <- betaBinomXI(s36, model = "AUTO", xciGenes = xcig, plot = TRUE)
 ```
 
-The function correctly identified the outliers and selected the "MM" model,
+The function correctly identified the outliers and selected the "M1" model,
 which is a mixture model with a Beta-binomial component for the true 
 heterozygous SNPs and a binomial mixture to fit the sequencing errors.
 
