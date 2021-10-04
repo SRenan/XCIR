@@ -87,7 +87,7 @@ case, the minimum read threshold for **both alleles** can be lowered or removed.
 annoXgeno <- annotateX(vcf, het_cutoff = 0, mirror = "useast")
 ```
 
-By default, `annotateX` aligns to `hg19`. Other versions can be passed through
+By default, `annotateX` aligns to `hg38`. Other versions can be passed through
 the `release` argument.
 
 Finally, another option for annotations is through the `seqminer` package. For

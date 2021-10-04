@@ -110,6 +110,10 @@ betaBinomXI <- function(genic_dt,  model = "AUTO", plot = FALSE, hist = FALSE,
   dt[, tau := ifelse(tau < 0, 0, tau)]
   dt[, var_tau := (2*f-1)^-2 * var_fg]
   dt[, ivw_tau := tau/sqrt(var_tau)]
+
+  # Adjusted p-values
+  dt[, adj_pvalue_bh := p.adjust(pvalue, method = "BH"), by = "sample"]
+  dt[, adj_pvalue_bc := p.adjust(pvalue, method = "bonferroni"), by = "sample"]
   
   if(hist){
     hist(unique(dt[, f]), breaks = seq(0, .5, .01), main = "Cell fraction", xlab="Cell fraction", ylab = "samples")
@@ -815,3 +819,4 @@ xci_calls <- function(xcirtable){
   xcirtable[, ivw_tau := tau/sqrt(var_tau)]
   return(xcirtable)
 }
+
