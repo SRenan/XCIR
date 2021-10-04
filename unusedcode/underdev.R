@@ -15,11 +15,7 @@ newCalls <- function(xcirout, newdata){
   newdata[, var_fg := var_fg/tot^2] # Because we want the variance for the fraction, not the variance for the counts
   newdata[, t := (fg-f)/sqrt(var_fg)] #Test statistic
   newdata[, p_value := pnorm(t, lower.tail = FALSE)]
-<<<<<<< HEAD
-=======
-  
   newdata[, status := ifelse(p_value < 0.05, "E", "S")]
->>>>>>> 1e7f75cf4f19d0b8e1cf6f368963a86232ff4177
 
   return(newdata)
 }
@@ -63,11 +59,6 @@ getZ <- function(xcirout){
   Zdt[, Z := (p_value - mup)/sdp]
 }
 
-<<<<<<< HEAD
-
-
-
-=======
 # PHASING LL
 # Limitations
 # - Only works for two variants
@@ -154,4 +145,3 @@ M1 <- function(x, n, as, bs){
   pi1 <- sum(p1)/n
   return() #return the parameter values and possibly the number of iteration and the likelihood difference.
 }
->>>>>>> 1e7f75cf4f19d0b8e1cf6f368963a86232ff4177
